@@ -2,6 +2,32 @@
 
 MLOps project on plant image classification
 
+## Overall Goal of the Project: 
+
+The primary objective of this project is to develop a robust MLOps pipeline for automated plant disease detection using the PlantVillage dataset. As MLOps engineers at a start-up, our priority is not the absolute performance of the model, but the speed and reliability of the pipeline itself. 
+We aim to create a system where experiments are fully reproducible through structured configuration and experiment tracking. To achieve this, we will implement a baseline model and moving toward a tuned version. A part of our operational goal is to containerize our application using Docker to ensure that our training and environments are consistent across different machines, which is essential for a MLOps workflow.
+
+
+
+## Data: Source and Initial Scope: 
+
+We will utilize the PlantVillage dataset from Kaggle, which contains thousands of images of various plant leaves in both healthy and diseased states. To keep the project manageable and avoid complex data-loading issues, we will initially work with a subset of the data. We will develop a get_data.sh script to handle the initial downloading ensuring that our data pipeline is as automated as possible.
+
+
+
+## Models and Frameworks: 
+
+We will use PyTorch as our primary machine learning framework. To streamline development and optimize our code, we plan to use the following:
+
+    ResNet-18: We will use this as our baseline model because it is a smaller, efficient architecture that allows for faster iteration.
+
+    Hydra: This will manage our configuration files and hyperparameters, allowing us to run multiple experiment variations easily.
+
+    Weights & Biases (W&B): We will use this to log our training progress, metrics, and model artifacts, ensuring that all team members can monitor the project's status in real-time.
+
+By focusing on these tools, we aim to move quickly through the design phase and focus on the long-term operations and reliability of the system.
+
+
 ## Project structure
 
 The directory structure of the project looks like this:
