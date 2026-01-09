@@ -36,21 +36,22 @@ The dataset files themselves are **not redistributed** as part of this repositor
 
 ### Setup Kaggle Credentials
 
-Create a file at: ```~/.kaggle/kaggle.json```
+Create a file at: `~/.kaggle/kaggle.json`
 
 with the following contents:
 
-```{
+```json
+{
   "username": "<your_kaggle_username>",
   "key": "<your_kaggle_api_key>"
 }
 ```
 
-On macOS/Linux, ensure correct permissions: ```chmod 600 ~/.kaggle/kaggle.json```
+On macOS/Linux, ensure correct permissions: `chmod 600 ~/.kaggle/kaggle.json`
 
 ### Download and Extract
 
-From the repository root, run: ```./scripts/get_data.sh```
+From the repository root, run: `./scripts/get_data.sh`
 
 This will:
 
@@ -64,7 +65,8 @@ This will:
 
 After extraction, the local structure should look similar to:
 
-```data/
+```txt
+data/
 └── raw/
     ├── PlantVillage/
     │   ├── Apple___Apple_scab/
