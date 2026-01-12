@@ -17,7 +17,10 @@ def train(
     print(f"lr: {lr}")
     print(f"batch size: {batch_size}")
     run = wandb.init(
-        project="corrupt_mnist",
+        # Set the wandb entity where your project will be logged (generally your team name).
+        entity="mlops_plant_group",
+        # Set the wandb project where this run will be logged.
+        project="plant-project",
         config={"lr": lr, "batch_size": batch_size, "epochs": epochs},
     )
     dataset = MyDataset("data")
