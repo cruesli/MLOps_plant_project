@@ -4,11 +4,11 @@ from torch import nn
 class Model(nn.Module):
     """My awesome model. currently setup for plant target classification."""
 
-    def __init__(self) -> None:
+    def __init__(self, num_classes: int) -> None:
         super().__init__()
         self.conv1 = nn.Conv2d(1, 32, 3, 1)
         self.conv2 = nn.Conv2d(32, 64, 3, 3, 1)
-        self.fc1 = nn.Linear(256, 14)
+        self.fc1 = nn.Linear(256, num_classes)
         self.dropout = nn.Dropout2d(0.2)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

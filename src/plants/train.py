@@ -1,3 +1,4 @@
+import json
 import torch
 import typer
 from pathlib import Path
@@ -24,9 +25,14 @@ def train(
         config={"lr": lr, "batch_size": batch_size, "epochs": epochs},
     )
     dataset = MyDataset("data")
-    model = Model()
+    
+    # Read metadata to get num_classes
+    with open("data/processed/metadata.json") as f:
+        metadata = json.load(f)
+    num_classes = len(metadata["class_to_idx"])
+
+    model = Model(num_classes=num_classes)
     # add rest of your training code here
-    model = Model()
     model.to(DEVICE)
     train_set, _ = dataset.load_plantvillage()
     train_dataloader = torch.utils.data.DataLoader(train_set, batch_size=batch_size)
@@ -79,7 +85,7 @@ def train(
 
     # ROC curves per class
     fig_roc, ax_roc = plt.subplots()
-    for class_id in range(10):
+    for class_id in range(num_classes):
         one_hot = torch.zeros_like(targets_tensor)
         one_hot[targets_tensor == class_id] = 1
         RocCurveDisplay.from_predictions(
