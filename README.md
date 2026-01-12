@@ -52,7 +52,7 @@ The directory structure of the project looks like this:
 ├── reports/                  # Reports
 │   └── figures/
 ├── src/                      # Source code
-│   ├── project_name/
+│   ├── plants/
 │   │   ├── __init__.py
 │   │   ├── api.py
 │   │   ├── data.py
@@ -79,3 +79,47 @@ The directory structure of the project looks like this:
 Created using [mlops_template](https://github.com/SkafteNicki/mlops_template),
 a [cookiecutter template](https://github.com/cookiecutter/cookiecutter) for getting
 started with Machine Learning Operations (MLOps).
+
+## Getting Started
+
+### Installation
+
+1. **Clone the repository**
+2. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Usage
+
+To run the project locally, you can use the provided scripts in `src/plants/`.
+
+**1. Download Data**
+The dataset is not included in the repo. Download it using the helper script (requires Kaggle API credentials):
+```bash
+uv run ./scripts/get_data.sh
+```
+
+**2. Preprocess Data**
+Process the raw images into tensors for training:
+```bash
+uv run src/plants/data.py
+```
+
+**3. Train Model**
+Train the model. You can specify hyperparameters like learning rate and epochs:
+```bash
+uv run src/plants/train.py --epochs 5 --batch-size 32 --lr 0.001
+```
+
+**4. Evaluate**
+Evaluate a trained model checkpoint:
+```bash
+uv run src/plants/evaluate.py models/model.pth
+```
+
+**5. Visualize**
+Generate data distribution plots and sample grids in `reports/figures/`:
+```bash
+uv run src/plants/visualize.py
+```
