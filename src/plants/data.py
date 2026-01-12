@@ -11,6 +11,11 @@ from PIL import Image
 from torch.utils.data import Dataset, TensorDataset
 from torchvision import transforms
 
+try:
+    from tqdm.auto import tqdm
+except ImportError:  # pragma: no cover - tqdm is optional at runtime
+    tqdm = None
+
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 
@@ -42,11 +47,11 @@ class MyDataset(Dataset):
 
         self.transform = transforms.Compose(
             [
-                transforms.Resize((28, 28)),
-                transforms.Grayscale(num_output_channels=1),
-                transforms.ToTensor(),
+                transforms.Resize((24, 24)),  # smaller
+                transforms.ToTensor(),          # keeps 3 channels if input is RGB
             ]
         )
+
 
         self.images: torch.Tensor | None = None
         self.class_labels: torch.Tensor | None = None
@@ -132,6 +137,7 @@ class MyDataset(Dataset):
         disease_to_idx: dict[str, int],
         plant_to_idx: dict[str, int],
         allow_new_classes: bool = True,
+        show_progress: bool = True,
     ) -> SplitData:
         images: list[torch.Tensor] = []
         class_labels: list[int] = []
@@ -142,6 +148,11 @@ class MyDataset(Dataset):
         if not class_dirs:
             msg = f"No class folders found in {split_dir}"
             raise ValueError(msg)
+
+        progress = None
+        if show_progress and tqdm is not None:
+            total_images = sum(1 for class_dir in class_dirs for _ in self._iter_image_files(class_dir))
+            progress = tqdm(total=total_images, desc=f"Processing {split_dir.name}", unit="img")
 
         for class_dir in sorted(class_dirs):
             label_name = class_dir.name
@@ -167,6 +178,11 @@ class MyDataset(Dataset):
                 class_labels.append(class_idx)
                 disease_labels.append(disease_idx)
                 plant_labels.append(plant_idx)
+                if progress is not None:
+                    progress.update(1)
+
+        if progress is not None:
+            progress.close()
 
         if not images:
             msg = f"No images found in split directory {split_dir}"
@@ -197,7 +213,7 @@ class MyDataset(Dataset):
         normalized = (images - mean_tensor) / std_tensor
         return normalized, mean_tensor, std_tensor
 
-    def preprocess(self) -> None:
+    def preprocess(self, *, show_progress: bool = True) -> None:
         """Process PlantVillage images into train/val tensors."""
         if not self.raw_dir.exists():
             msg = f"Raw data directory not found: {self.raw_dir}. Run ./scripts/get_data.sh first."
@@ -213,10 +229,20 @@ class MyDataset(Dataset):
         plant_to_idx: dict[str, int] = {}
 
         train_split = self._load_and_transform_split(
-            train_dir, class_to_idx, disease_to_idx, plant_to_idx, allow_new_classes=True
+            train_dir,
+            class_to_idx,
+            disease_to_idx,
+            plant_to_idx,
+            allow_new_classes=True,
+            show_progress=show_progress,
         )
         val_split = self._load_and_transform_split(
-            val_dir, class_to_idx, disease_to_idx, plant_to_idx, allow_new_classes=False
+            val_dir,
+            class_to_idx,
+            disease_to_idx,
+            plant_to_idx,
+            allow_new_classes=False,
+            show_progress=show_progress,
         )
 
         train_images, mean, std = self.normalize(train_split.images)
@@ -309,11 +335,11 @@ class MyDataset(Dataset):
         return self.load_plantvillage(target=self.target)
 
 
-def preprocess(data_path: Path = Path("data")) -> None:
+def preprocess(data_path: Path = Path("data"), show_progress: bool = True) -> None:
     """CLI entrypoint for preprocessing PlantVillage data."""
     print("Preprocessing PlantVillage data...")
     dataset = MyDataset(data_path)
-    dataset.preprocess()
+    dataset.preprocess(show_progress=show_progress)
 
 
 if __name__ == "__main__":

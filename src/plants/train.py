@@ -29,13 +29,13 @@ def train(
     # Read metadata to get num_classes
     with open("data/processed/metadata.json") as f:
         metadata = json.load(f)
-    num_classes = len(metadata["class_to_idx"])
+    num_classes = len(metadata["plant_to_idx"])
 
     model = Model(num_classes=num_classes)
     # add rest of your training code here
     model.to(DEVICE)
     train_set, _ = dataset.load_plantvillage()
-    train_dataloader = torch.utils.data.DataLoader(train_set, batch_size=batch_size)
+    train_dataloader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     statistics = {"train_loss": [], "train_accuracy": []}
