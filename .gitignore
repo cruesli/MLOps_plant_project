@@ -181,4 +181,4 @@ data/
 *.zip
 
 # wandb
-wandb/
+wandb/models/model.pth
