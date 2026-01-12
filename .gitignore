@@ -182,3 +182,4 @@ data/
 
 # wandb
 wandb/models/model.pth
+models/model.pth
