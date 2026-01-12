@@ -1,0 +1,3 @@
+data_dir: data
+shuffle: true
+num_workers: 0

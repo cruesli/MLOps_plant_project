@@ -1,0 +1,17 @@
+seed: 123
+epochs: 5
+lr: 0.001
+batch_size: 32
+device: auto
+target: disease
+num_classes: null
+metadata_path: data/processed/metadata.json
+model_dir: models
+wandb:
+  enabled: true
+  entity: mlops_plant_group
+  project: plant-project
+artifact:
+  name: plant-disease-classifier
+  type: model
+  description: A model trained to classify leaves and their health status.

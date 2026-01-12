@@ -1,0 +1,5 @@
+defaults:
+  - experiments: plant
+  - dataloader: default
+  - model: default
+  - _self_
