@@ -11,6 +11,8 @@ We aim to create a system where experiments are fully reproducible through struc
 
 ## Data: Source and Initial Scope: 
 
+**Dataset:** The PlantVillage dataset is not included in this repository. See [`Dataset.md`](Dataset.md) for download and setup instructions.
+
 We will utilize the PlantVillage dataset from Kaggle, which contains thousands of images of various plant leaves in both healthy and diseased states. To keep the project manageable and avoid complex data-loading issues, we will initially work with a subset of the data. We will develop a get_data.sh script to handle the initial downloading ensuring that our data pipeline is as automated as possible.
 
 
