@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
-
+import multiprocessing as mp
 import torch
 import typer
 from PIL import Image
@@ -47,7 +47,7 @@ class MyDataset(Dataset):
 
         self.transform = transforms.Compose(
             [
-                transforms.Resize((24, 24)),  # smaller
+                transforms.Resize((128, 128)),
                 transforms.ToTensor(),          # keeps 3 channels if input is RGB
             ]
         )
@@ -330,17 +330,15 @@ class MyDataset(Dataset):
             raise ValueError(msg)
         return train_ds, val_ds
 
-    def load_corrupt_mnist(self) -> tuple[TensorDataset, TensorDataset]:
-        """Backward-compatible alias that now returns PlantVillage splits."""
-        return self.load_plantvillage(target=self.target)
-
-
 def preprocess(data_path: Path = Path("data"), show_progress: bool = True) -> None:
     """CLI entrypoint for preprocessing PlantVillage data."""
     print("Preprocessing PlantVillage data...")
     dataset = MyDataset(data_path)
     dataset.preprocess(show_progress=show_progress)
 
+def main():
+    typer.run(preprocess)
 
 if __name__ == "__main__":
-    typer.run(preprocess)
+    mp.set_start_method("fork") 
+    main()

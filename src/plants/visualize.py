@@ -2,11 +2,13 @@ import json
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from PIL import Image
 import torch
 import typer
 from model import Model
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
+from data import ALLOWED_EXTENSIONS
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
@@ -56,12 +58,77 @@ def visualize(
     print(f"Visualization saved to {figure_name}")
 
 
-def visualize_data(
+def visualize_raw_data(
+    data_dir: str = "data",
+    split: str = "train",
+    figure_name: str = "raw_sample_grid.png",
+    sample_count: int = 9,
+) -> dict[tuple[int, int, int], int]:
+    """Visualize raw images (folders per label) and report shape consistency."""
+    reports_dir = Path("reports/figures")
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    data_root = Path(data_dir)
+    metadata_path = data_root / "processed" / "metadata.json"
+    metadata = json.loads(metadata_path.read_text()) if metadata_path.exists() else {}
+    split_hint = metadata.get("splits", {}).get(split)
+
+    candidates = [
+        Path(split_hint) if split_hint else None,
+        data_root / "raw" / "PlantVillage" / split,
+        data_root / "raw" / split,
+    ]
+    raw_split = next((p for p in candidates if p and p.exists()), None)
+    if raw_split is None:
+        raise FileNotFoundError(f"Could not locate raw split '{split}' under {data_root}")
+
+    image_paths = [p for p in raw_split.rglob("*") if p.is_file() and p.suffix.lower() in ALLOWED_EXTENSIONS]
+    if not image_paths:
+        raise FileNotFoundError(f"No raw images found in {raw_split}")
+
+    sample_paths = image_paths[: min(sample_count, len(image_paths))]
+    shape_counts: dict[tuple[int, int, int], int] = {}
+
+    cols = 3
+    rows = (len(sample_paths) + cols - 1) // cols
+    fig, axes = plt.subplots(rows, cols, figsize=(8, 8))
+    axes_flat = list(axes.flat) if hasattr(axes, "flat") else [axes]
+
+    for ax, img_path in zip(axes_flat, sample_paths):
+        with Image.open(img_path) as img:
+            rgb = img.convert("RGB")
+            h, w = rgb.height, rgb.width
+            c = len(rgb.getbands())
+            shape = (h, w, c)
+            shape_counts[shape] = shape_counts.get(shape, 0) + 1
+            ax.imshow(rgb)
+            ax.set_title(f"{img_path.parent.name}\n{h}x{w}x{c}", fontsize=8)
+            ax.axis("off")
+
+    for ax in axes_flat[len(sample_paths) :]:
+        ax.axis("off")
+
+    plt.tight_layout()
+    fig_path = reports_dir / figure_name
+    plt.savefig(fig_path)
+    plt.close(fig)
+
+    if len(shape_counts) == 1:
+        sole = next(iter(shape_counts))
+        typer.echo(f"Raw shapes consistent: {sole}")
+    else:
+        typer.echo(f"Raw shapes vary: {shape_counts}")
+    typer.echo(f"Raw sample grid saved to {fig_path}")
+    return shape_counts
+
+
+def visualize_processed_data(
     processed_dir: str = "data/processed",
     split: str = "train",
     figure_name: str = "sample_grid.png",
+    sample_count: int = 9,
 ) -> None:
-    """Show a 3x3 grid of sample images and print basic dataset stats."""
+    """Show processed sample grid and label distributions."""
     processed_path = Path(processed_dir)
     images_path = processed_path / f"{split}_images.pt"
     labels_path = processed_path / f"{split}_labels.pt"
@@ -79,6 +146,8 @@ def visualize_data(
     class_to_idx = metadata.get("class_to_idx", {})
     disease_to_idx = metadata.get("disease_to_idx", {})
     plant_to_idx = metadata.get("plant_to_idx", {})
+    mean_val = metadata.get("mean")
+    std_val = metadata.get("std")
     idx_to_class = {idx: name for name, idx in class_to_idx.items()}
     idx_to_disease = {idx: name for name, idx in disease_to_idx.items()}
     idx_to_plant = {idx: name for name, idx in plant_to_idx.items()}
@@ -88,7 +157,6 @@ def visualize_data(
     disease_labels = torch.load(disease_labels_path)
     plant_labels = torch.load(plant_labels_path)
 
-    # General statistics
     split_sizes: dict[str, int] = {}
     for sp in ("train", "val"):
         sp_path = processed_path / f"{sp}_images.pt"
@@ -132,17 +200,19 @@ def visualize_data(
     )
     _plot_distribution(plant_unique, plant_counts, idx_to_plant, f"{split} plant distribution", f"{split}_plant_dist.png")
 
-    # 3x3 grid of samples
-    sample_count = min(9, images.shape[0])
+    sample_count = min(sample_count, images.shape[0])
     sample_indices = torch.linspace(0, images.shape[0] - 1, steps=sample_count, dtype=torch.long)
 
     fig, axes = plt.subplots(3, 3, figsize=(8, 8))
     for ax, idx in zip(axes.flat, sample_indices.tolist()):
-        img = images[idx].squeeze()
+        img = images[idx].permute(1, 2, 0)  # (H, W, C)
+        if mean_val is not None and std_val is not None:
+            img = img * float(std_val) + float(mean_val)
+        img = torch.clamp(img, 0.0, 1.0).cpu()
         class_name = idx_to_class.get(int(class_labels[idx]), str(int(class_labels[idx])))
         disease_name = idx_to_disease.get(int(disease_labels[idx]), str(int(disease_labels[idx])))
         plant_name = idx_to_plant.get(int(plant_labels[idx]), str(int(plant_labels[idx])))
-        ax.imshow(img, cmap="gray")
+        ax.imshow(img.numpy())
         ax.set_title(f"{plant_name}\n{class_name}\nDisease: {disease_name}", fontsize=8)
         ax.axis("off")
 
@@ -155,5 +225,34 @@ def visualize_data(
     plt.close(fig)
     print(f"Sample grid saved to {fig_path}")
 
+
+def main(
+    source: str = typer.Option("processed", "--source", "-s", help="Choose 'processed' or 'raw' visualization"),
+    split: str = typer.Option("train", "--split", help="Dataset split to visualize"),
+    figure_name: str | None = typer.Option(None, "--figure-name", "-f", help="Optional output filename"),
+    sample_count: int = typer.Option(9, "--sample-count", "-n", help="Number of samples to show in grid"),
+    data_dir: str = typer.Option("data", "--data-dir", help="Data root for raw images"),
+    processed_dir: str = typer.Option("data/processed", "--processed-dir", help="Directory with processed tensors"),
+) -> None:
+    """Dispatch to raw or processed visualization based on a single flag."""
+    normalized = source.lower()
+    if normalized == "raw":
+        visualize_raw_data(
+            data_dir=data_dir,
+            split=split,
+            figure_name=figure_name or "raw_sample_grid.png",
+            sample_count=sample_count,
+        )
+    elif normalized == "processed":
+        visualize_processed_data(
+            processed_dir=processed_dir,
+            split=split,
+            figure_name=figure_name or "sample_grid.png",
+            sample_count=sample_count,
+        )
+    else:
+        raise typer.BadParameter("source must be either 'raw' or 'processed'")
+
+
 if __name__ == "__main__":
-    typer.run(visualize_data)
+    typer.run(main)
