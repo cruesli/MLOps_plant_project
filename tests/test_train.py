@@ -1,12 +1,12 @@
-import torch
-from plants.train import train
+from plants.train import _train_model
 from plants.model import Model
+import torch
 import os
 import json
 from pathlib import Path
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 import pytest
-from unittest.mock import patch
+
 
 def get_model_state_dict(model_path, num_classes):
     """Load and return the state dict of a model."""
@@ -28,51 +28,43 @@ def get_model_state_dict(model_path, num_classes):
     return model.state_dict()
 
 
-# This is the actual test function for reproducibility
-@patch('src.plants.train.hydra.main')
-def test_reproducibility(mock_hydra_main_decorator, tmp_path):
+def test_reproducibility(tmp_path):
     """Test the reproducibility of the training script."""
 
-    # Configure the mock decorator to call the original 'train' function with a dummy config
-    def mock_decorator(func):
-        def wrapper(*args, **kwargs):
-            cfg = DictConfig({
-                "experiments": {
-                    "lr": 1e-3,
-                    "epochs": 1,
-                    "batch_size": 8,
-                    "seed": 42,
-                    "device": "cpu", # Use CPU for testing
-                    "metadata_path": "data/processed/metadata.json",
-                    "model_dir": str(tmp_path), # Use temporary directory for model output
-                    "wandb": {"enabled": False, "entity": "test", "project": "test"},
-                    "artifact": {"name": "test_model", "type": "model", "description": "test model"},
-                    "target": "class", # Assuming 'class' as the default target for the dummy data
-                },
-                "model": {
-                    "in_channels": 1, # Dummy data is 1 channel
-                    "conv1_out": 32,
-                    "conv1_kernel": 3,
-                    "conv1_stride": 1,
-                    "conv2_out": 64,
-                    "conv2_kernel": 3,
-                    "conv2_stride": 3,
-                    "conv2_padding": 1,
-                    "dropout": 0.2,
-                },
-                "dataloader": {
-                    "shuffle": True,
-                    "num_workers": 0,
-                    "data_dir": "data", # Path to dummy data
-                }
-            })
-            # Dynamically set num_classes from metadata, similar to how train does it
-            with open("data/processed/metadata.json") as f:
-                metadata = json.load(f)
-            cfg.experiments.num_classes = len(metadata[f"{cfg.experiments.target}_to_idx"])
-            func(cfg)
-        return wrapper
-    mock_hydra_main_decorator.side_effect = mock_decorator
+    cfg = DictConfig({
+        "experiments": {
+            "lr": 1e-3,
+            "epochs": 1,
+            "batch_size": 8,
+            "seed": 42,
+            "device": "cpu", # Use CPU for testing
+            "metadata_path": "data/processed/metadata.json",
+            "model_dir": str(tmp_path), # Use temporary directory for model output
+            "wandb": {"enabled": False, "entity": "test", "project": "test"},
+            "artifact": {"name": "test_model", "type": "model", "description": "test model"},
+            "target": "class", # Assuming 'class' as the default target for the dummy data
+        },
+        "model": {
+            "in_channels": 1, # Dummy data is 1 channel
+            "conv1_out": 32,
+            "conv1_kernel": 3,
+            "conv1_stride": 1,
+            "conv2_out": 64,
+            "conv2_kernel": 3,
+            "conv2_stride": 3,
+            "conv2_padding": 1,
+            "dropout": 0.2,
+        },
+        "dataloader": {
+            "shuffle": True,
+            "num_workers": 0,
+            "data_dir": "data", # Path to dummy data
+        }
+    })
+    # Dynamically set num_classes from metadata, similar to how train does it
+    with open("data/processed/metadata.json") as f:
+        metadata = json.load(f)
+    cfg.experiments.num_classes = len(metadata[f"{cfg.experiments.target}_to_idx"])
 
     # Ensure a clean slate for model output
     model_path = tmp_path / "model.pth"
@@ -80,13 +72,13 @@ def test_reproducibility(mock_hydra_main_decorator, tmp_path):
         os.remove(model_path)
 
     # First run
-    train() # Calls the patched train function
+    _train_model(cfg) # Calls the patched train function
     # num_classes from dummy data in test_data.py (5 for "class")
     state_dict_1 = get_model_state_dict(model_path, num_classes=5)
     os.remove(model_path)
 
     # Second run
-    train() # Calls the patched train function again
+    _train_model(cfg) # Calls the patched train function again
     # num_classes from dummy data in test_data.py (5 for "class")
     state_dict_2 = get_model_state_dict(model_path, num_classes=5)
 
