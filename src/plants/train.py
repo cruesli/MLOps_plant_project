@@ -9,8 +9,8 @@ from omegaconf import DictConfig, OmegaConf
 from sklearn.metrics import RocCurveDisplay, accuracy_score, f1_score, precision_score, recall_score
 
 import wandb
-from data import MyDataset
-from model import Model
+from src.plants.data import MyDataset
+from src.plants.model import Model
 
 
 def _select_device(preference: str) -> torch.device:
@@ -57,19 +57,13 @@ def train(cfg: DictConfig) -> None:
         metadata = json.load(f)
     if target == "class":
         num_classes = len(metadata["class_to_idx"])
-        class_names = [
-            name for name, _ in sorted(metadata["class_to_idx"].items(), key=lambda item: item[1])
-        ]
+        class_names = [name for name, _ in sorted(metadata["class_to_idx"].items(), key=lambda item: item[1])]
     elif target == "disease":
         num_classes = len(metadata["disease_to_idx"])
-        class_names = [
-            name for name, _ in sorted(metadata["disease_to_idx"].items(), key=lambda item: item[1])
-        ]
+        class_names = [name for name, _ in sorted(metadata["disease_to_idx"].items(), key=lambda item: item[1])]
     elif target == "plant":
         num_classes = len(metadata["plant_to_idx"])
-        class_names = [
-            name for name, _ in sorted(metadata["plant_to_idx"].items(), key=lambda item: item[1])
-        ]
+        class_names = [name for name, _ in sorted(metadata["plant_to_idx"].items(), key=lambda item: item[1])]
     else:
         raise ValueError(f"Unsupported target '{target}'. Expected one of ['class', 'disease', 'plant'] for training.")
     hparams.num_classes = num_classes
@@ -120,7 +114,11 @@ def train(cfg: DictConfig) -> None:
             running_total += target.size(0)
             if run is not None:
                 wandb.log(
-                    {"train_loss": loss.item(), "train_accuracy": accuracy, "learning_rate": optimizer.param_groups[0]["lr"]},
+                    {
+                        "train_loss": loss.item(),
+                        "train_accuracy": accuracy,
+                        "learning_rate": optimizer.param_groups[0]["lr"],
+                    },
                     step=global_step,
                 )
             preds.append(y_pred.detach().cpu())
@@ -138,7 +136,9 @@ def train(cfg: DictConfig) -> None:
                     ]
                     wandb.log({"input_images": images})
 
-                    grads = torch.cat([p.grad.flatten() for p in model.parameters() if p.grad is not None], 0)
+                    grads = torch.cat(
+                        [p.grad.flatten() for p in model.parameters() if p.grad is not None], 0
+                    )
                     wandb.log({"gradients": wandb.Histogram(grads.detach().cpu().numpy())})
 
                 statistics["train_loss"].append(loss.item())

@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Annotated, Optional
 
 import torch
 import typer
@@ -8,8 +9,8 @@ from omegaconf import DictConfig, OmegaConf
 from sklearn.metrics import accuracy_score, classification_report, f1_score, precision_score, recall_score
 
 import wandb
-from data import MyDataset
-from model import Model
+from src.plants.data import MyDataset
+from src.plants.model import Model
 
 
 def _repo_root() -> Path:
@@ -49,20 +50,34 @@ def _class_metadata(metadata: dict, target: str) -> tuple[int, list[str]]:
     elif target == "plant":
         mapping = metadata["plant_to_idx"]
     else:
-        raise ValueError(f"Unsupported target '{target}'. Expected one of ['class', 'disease', 'plant'] for evaluation.")
+        raise ValueError(
+            f"Unsupported target '{target}'. Expected one of ['class', 'disease', 'plant'] for evaluation."
+        )
 
     class_names = [name for name, _ in sorted(mapping.items(), key=lambda item: item[1])]
     return len(mapping), class_names
 
 
 def evaluate(
-    model_checkpoint: Path | None = typer.Argument(
-        None, help="Path to model checkpoint (defaults to config experiments.model_dir/model.pth)."
-    ),
-    batch_size: int | None = typer.Option(None, "--batch-size", "-b", help="Override batch size from config."),
-    target: str | None = typer.Option(None, "--target", help="Override target from config."),
-    data_dir: Path | None = typer.Option(None, "--data-dir", help="Override data directory from config."),
-    config_name: str = typer.Option("default_config", "--config-name", help="Hydra config name to load."),
+    model_checkpoint: Annotated[
+        Optional[Path],  # noqa: UP007
+        typer.Argument(help="Path to model checkpoint (defaults to config experiments.model_dir/model.pth)."),
+    ] = None,
+    batch_size: Annotated[
+        Optional[int],  # noqa: UP007
+        typer.Option("--batch-size", "-b", help="Override batch size from config."),
+    ] = None,
+    target: Annotated[
+        Optional[str],  # noqa: UP007
+        typer.Option("--target", help="Override target from config."),
+    ] = None,
+    data_dir: Annotated[
+        Optional[Path],  # noqa: UP007
+        typer.Option("--data-dir", help="Override data directory from config."),
+    ] = None,
+    config_name: Annotated[
+        str, typer.Option("--config-name", help="Hydra config name to load.")
+    ] = "default_config",
 ) -> None:
     """Evaluate a trained model."""
     cfg = _load_config(config_name)

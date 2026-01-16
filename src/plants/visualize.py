@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 
 import matplotlib.pyplot as plt
 import torch
@@ -10,8 +10,8 @@ from PIL import Image
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
-from data import ALLOWED_EXTENSIONS
-from model import Model
+from src.plants.data import ALLOWED_EXTENSIONS
+from src.plants.model import Model
 
 
 def _repo_root() -> Path:
@@ -321,15 +321,38 @@ def visualize_processed_data(
 
 
 def main(
-    source: str = typer.Option("processed", "--source", "-s", help="Choose 'processed' or 'raw' visualization"),
-    split: str = typer.Option("train", "--split", help="Dataset split to visualize"),
-    figure_name: Optional[str] = typer.Option(None, "--figure-name", "-f", help="Optional output filename"),
-    sample_count: int = typer.Option(9, "--sample-count", "-n", help="Number of samples to show in grid"),
-    data_dir: Optional[str] = typer.Option(None, "--data-dir", help="Data root for raw images"),
-    processed_dir: Optional[str] = typer.Option(None, "--processed-dir", help="Directory with processed tensors"),
-    target: Optional[str] = typer.Option(None, "--target", help="Override target for embeddings visualization"),
-    model_checkpoint: Optional[Path] = typer.Option(None, "--model-checkpoint", help="Model checkpoint for embeddings"),
-    config_name: str = typer.Option("default_config", "--config-name", help="Hydra config name to load."),
+    source: Annotated[
+        str, typer.Option("--source", "-s", help="Choose 'processed' or 'raw' visualization")
+    ] = "processed",
+    split: Annotated[
+        str, typer.Option("--split", help="Dataset split to visualize")
+    ] = "train",
+    figure_name: Annotated[
+        Optional[str],  # noqa: UP007
+        typer.Option("--figure-name", "-f", help="Optional output filename"),
+    ] = None,
+    sample_count: Annotated[
+        int, typer.Option("--sample-count", "-n", help="Number of samples to show in grid")
+    ] = 9,
+    data_dir: Annotated[
+        Optional[str],  # noqa: UP007
+        typer.Option("--data-dir", help="Data root for raw images"),
+    ] = None,
+    processed_dir: Annotated[
+        Optional[str],  # noqa: UP007
+        typer.Option("--processed-dir", help="Directory with processed tensors"),
+    ] = None,
+    target: Annotated[
+        Optional[str],  # noqa: UP007
+        typer.Option("--target", help="Override target for embeddings visualization"),
+    ] = None,
+    model_checkpoint: Annotated[
+        Optional[Path],  # noqa: UP007
+        typer.Option("--model-checkpoint", help="Model checkpoint for embeddings"),
+    ] = None,
+    config_name: Annotated[
+        str, typer.Option("--config-name", help="Hydra config name to load.")
+    ] = "default_config",
 ) -> None:
     """Dispatch to raw or processed visualization based on a single flag."""
     cfg = _load_config(config_name)
