@@ -1,6 +1,7 @@
 import torch
-from plants.data import MyDataset
 from torch.utils.data import Dataset, TensorDataset
+
+from src.plants.data import MyDataset
 
 
 def test_my_dataset():

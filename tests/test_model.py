@@ -1,5 +1,6 @@
 import torch
-from plants.model import Model
+
+from src.plants.model import Model
 
 
 def test_model_initialization():
