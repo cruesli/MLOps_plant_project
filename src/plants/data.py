@@ -48,6 +48,11 @@ class MyDataset(Dataset):
         self.split = split
         self.target = target
 
+        VALID_TARGETS = {"class", "disease", "plant", "both", "all"}
+        if self.target not in VALID_TARGETS:
+            msg = f"Unknown target '{self.target}'. Expected one of {sorted(list(VALID_TARGETS))}."
+            raise ValueError(msg)
+
         self.transform = transforms.Compose(
             [
                 transforms.Resize((128, 128)),
@@ -87,7 +92,7 @@ class MyDataset(Dataset):
                 self.disease_labels[index],
                 self.plant_labels[index],
             )
-        msg = f"Unknown target '{self.target}'. Expected one of ['class', 'disease', 'both']."
+        msg = f"Unknown target '{self.target}'. Expected one of ['class', 'disease', 'plant', 'both', 'all']."
         raise ValueError(msg)
 
     @staticmethod

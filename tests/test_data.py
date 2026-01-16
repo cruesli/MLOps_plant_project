@@ -1,5 +1,8 @@
 import torch
 from torch.utils.data import Dataset, TensorDataset
+import json
+from pathlib import Path
+import pytest
 
 from src.plants.data import MyDataset
 
@@ -19,9 +22,6 @@ def test_my_dataset():
     dummy_val_labels = torch.randint(0, 5, (5,))
     dummy_val_disease = torch.randint(0, 2, (5,))
     dummy_val_plant = torch.randint(0, 3, (5,))
-
-    import json
-    from pathlib import Path
 
     processed_dir = Path("data/processed")
     processed_dir.mkdir(parents=True, exist_ok=True)
@@ -65,3 +65,47 @@ def test_dataset_getitem():
     assert isinstance(label, torch.Tensor)
     assert img.shape == (1, 28, 28)
     assert label.shape == ()
+
+
+def test_data_structure_and_amount():
+    """Test the structure and amount of the data."""
+    train_images = torch.load("data/processed/train_images.pt")
+    train_labels = torch.load("data/processed/train_labels.pt")
+    train_disease = torch.load("data/processed/train_disease_labels.pt")
+    train_plant = torch.load("data/processed/train_plant_labels.pt")
+
+    val_images = torch.load("data/processed/val_images.pt")
+    val_labels = torch.load("data/processed/val_labels.pt")
+    val_disease = torch.load("data/processed/val_disease_labels.pt")
+    val_plant = torch.load("data/processed/val_plant_labels.pt")
+
+    assert train_images.shape == (10, 1, 28, 28)
+    assert train_labels.shape == (10,)
+    assert train_disease.shape == (10,)
+    assert train_plant.shape == (10,)
+
+    assert val_images.shape == (5, 1, 28, 28)
+    assert val_labels.shape == (5,)
+    assert val_disease.shape == (5,)
+    assert val_plant.shape == (5,)
+
+    with open("data/processed/metadata.json") as f:
+        metadata = json.load(f)
+
+    assert len(metadata["class_to_idx"]) == 5
+    assert len(metadata["disease_to_idx"]) == 2
+    assert len(metadata["plant_to_idx"]) == 3
+
+
+def test_dataset_initialization():
+    """Test the initialization of the MyDataset class."""
+    # Test with different split and target values
+    MyDataset("data", split="train", target="class")
+    MyDataset("data", split="val", target="disease")
+    MyDataset("data", split="train", target="plant")
+    MyDataset("data", split="val", target="both")
+    MyDataset("data", split="train", target="all")
+
+    # Test with invalid target
+    with pytest.raises(ValueError):
+        MyDataset("data", split="train", target="invalid_target")
