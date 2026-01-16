@@ -143,4 +143,4 @@ def evaluate(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    evaluate()
+    typer.run(evaluate)

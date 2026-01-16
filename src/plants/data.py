@@ -4,6 +4,7 @@ import json
 import multiprocessing as mp
 import platform
 from collections.abc import Iterable
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -347,14 +348,10 @@ if __name__ == "__main__":
     # Windows doesn't support 'fork', only 'spawn'.
     # Linux/macOS usually prefer 'fork' for faster data loading.
     if platform.system() != "Windows":
-        try:
+        with suppress(RuntimeError):
             mp.set_start_method("fork", force=True)
-        except RuntimeError:
-            pass  # Method might already be set
     else:
-        try:
+        with suppress(RuntimeError):
             mp.set_start_method("spawn", force=True)
-        except RuntimeError:
-            pass
 
     main()
