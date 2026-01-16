@@ -1,4 +1,5 @@
 import json
+import json
 from pathlib import Path
 
 import hydra
@@ -11,20 +12,9 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 import wandb
 from data import MyDataset
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
-def _select_device(preference: str) -> torch.device:
-    if preference == "cuda" and torch.cuda.is_available():
-        return torch.device("cuda")
-    if preference == "mps" and torch.backends.mps.is_available():
-        return torch.device("mps")
-    if preference == "cpu":
-        return torch.device("cpu")
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
-
+METADATA_PATH = Path("data/processed/metadata.json")
 
 def _resolve_num_classes(target: str, metadata_path: Path) -> int:
     with open(metadata_path) as handle:
@@ -82,6 +72,27 @@ def evaluate(cfg: DictConfig) -> None:
     state = torch.load(checkpoint_path, map_location=device)
     if isinstance(state, dict) and "state_dict" in state:
         state = state["state_dict"]
+    print("Evaluating like my life depends on it")
+    print(model_checkpoint)
+
+    with open(METADATA_PATH) as f:
+        metadata = json.load(f)
+    num_classes = len(metadata["plant_to_idx"])
+
+    state = torch.load(model_checkpoint)
+    model = Model(
+        num_classes=num_classes,
+        in_channels=3,
+        conv1_out=32,
+        conv1_kernel=3,
+        conv1_stride=1,
+        conv2_out=64,
+        conv2_kernel=3,
+        conv2_stride=3,
+        conv2_padding=1,
+        dropout=0.2,
+    )
+    model.to(DEVICE)
     model.load_state_dict(state)
 
     dataset = MyDataset(data_dir, target=target)
