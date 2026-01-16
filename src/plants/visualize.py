@@ -1,9 +1,11 @@
 import json
 from pathlib import Path
+from typing import Annotated, Optional
 
 import matplotlib.pyplot as plt
 import torch
 import typer
+from hydra import compose, initialize_config_dir
 from PIL import Image
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
@@ -11,33 +13,114 @@ from sklearn.manifold import TSNE
 from src.plants.data import ALLOWED_EXTENSIONS
 from src.plants.model import Model
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _resolve_path(path: str | Path, base_dir: Path) -> Path:
+    candidate = Path(path)
+    return candidate if candidate.is_absolute() else base_dir / candidate
+
+
+def _load_config(config_name: str = "default_config"):
+    config_dir = _repo_root() / "configs"
+    with initialize_config_dir(version_base=None, config_dir=str(config_dir)):
+        return compose(config_name=config_name)
+
+
+def _select_device(preference: str) -> torch.device:
+    if preference == "cuda" and torch.cuda.is_available():
+        return torch.device("cuda")
+    if preference == "mps" and torch.backends.mps.is_available():
+        return torch.device("mps")
+    if preference == "cpu":
+        return torch.device("cpu")
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
+def _class_metadata(metadata: dict, target: str) -> tuple[int, dict[int, str]]:
+    if target == "class":
+        mapping = metadata["class_to_idx"]
+    elif target == "disease":
+        mapping = metadata["disease_to_idx"]
+    elif target == "plant":
+        mapping = metadata["plant_to_idx"]
+    else:
+        raise ValueError(f"Unsupported target '{target}'. Expected one of ['class', 'disease', 'plant'] for visualize.")
+
+    idx_to_name = {idx: name for name, idx in mapping.items()}
+    return len(mapping), idx_to_name
 
 
 def visualize(
-    model_checkpoint: str | Path = "models/model.pth",
+    model_checkpoint: str | Path | None = None,
     figure_name: str = "embeddings.png",
+    target: str | None = None,
+    data_dir: str | None = None,
+    config_name: str = "default_config",
 ) -> None:
     """Visualize model predictions."""
-    checkpoint_path = Path(model_checkpoint)
+    cfg = _load_config(config_name)
+    hparams = cfg.experiments
+    if target is None:
+        target = hparams.target
+    if data_dir is None:
+        data_dir = cfg.dataloader.data_dir
+
+    device = _select_device(hparams.device)
+    base_dir = _repo_root()
+    resolved_data_dir = _resolve_path(data_dir, base_dir)
+    metadata_path = _resolve_path(hparams.metadata_path, base_dir)
+    model_dir = _resolve_path(hparams.model_dir, base_dir)
+    checkpoint_path = _resolve_path(model_checkpoint or model_dir / "model.pth", base_dir)
     if not checkpoint_path.exists():
         raise FileNotFoundError(f"Model checkpoint not found: {checkpoint_path}")
+    if not metadata_path.exists():
+        raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
 
-    model: torch.nn.Module = Model()
-    model.load_state_dict(torch.load(checkpoint_path))
-    model.to(DEVICE)
+    metadata = json.loads(metadata_path.read_text())
+    num_classes, idx_to_name = _class_metadata(metadata, target)
+
+    model: torch.nn.Module = Model(
+        num_classes=num_classes,
+        in_channels=cfg.model.in_channels,
+        conv1_out=cfg.model.conv1_out,
+        conv1_kernel=cfg.model.conv1_kernel,
+        conv1_stride=cfg.model.conv1_stride,
+        conv2_out=cfg.model.conv2_out,
+        conv2_kernel=cfg.model.conv2_kernel,
+        conv2_stride=cfg.model.conv2_stride,
+        conv2_padding=cfg.model.conv2_padding,
+        dropout=cfg.model.dropout,
+    )
+    model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+    model.to(device)
     model.eval()
-    model.fc = torch.nn.Identity()
+    model.fc1 = torch.nn.Identity()
 
-    val_images = torch.load("data/processed/val_images.pt")
-    val_labels = torch.load("data/processed/val_labels.pt")
+    processed_dir = resolved_data_dir / "processed"
+    val_images = torch.load(processed_dir / "val_images.pt")
+    if target == "class":
+        labels_path = processed_dir / "val_labels.pt"
+    elif target == "disease":
+        labels_path = processed_dir / "val_disease_labels.pt"
+    elif target == "plant":
+        labels_path = processed_dir / "val_plant_labels.pt"
+    else:
+        raise ValueError(f"Unsupported target '{target}'. Expected one of ['class', 'disease', 'plant'] for visualize.")
+    val_labels = torch.load(labels_path)
     val_dataset = torch.utils.data.TensorDataset(val_images, val_labels)
 
     embeddings, targets = [], []
     with torch.inference_mode():
         for batch in torch.utils.data.DataLoader(val_dataset, batch_size=32):
             images, target = batch
-            images = images.to(DEVICE)
+            images = images.to(device)
             predictions = model(images)
             embeddings.append(predictions.cpu())
             targets.append(target.cpu())
@@ -51,12 +134,16 @@ def visualize(
     embeddings = tsne.fit_transform(embeddings)
 
     plt.figure(figsize=(10, 10))
-    for i in range(10):
+    for i in range(min(10, num_classes)):
         mask = targets == i
-        plt.scatter(embeddings[mask, 0], embeddings[mask, 1], label=str(i))
+        label = idx_to_name.get(int(i), str(i))
+        plt.scatter(embeddings[mask, 0], embeddings[mask, 1], label=label)
     plt.legend()
-    plt.savefig(f"reports/figures/{figure_name}")
-    print(f"Visualization saved to {figure_name}")
+    reports_dir = _resolve_path("reports/figures", base_dir)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    fig_path = reports_dir / figure_name
+    plt.savefig(fig_path)
+    print(f"Visualization saved to {fig_path}")
 
 
 def visualize_raw_data(
@@ -234,18 +321,51 @@ def visualize_processed_data(
 
 
 def main(
-    source: str = typer.Option("processed", "--source", "-s", help="Choose 'processed' or 'raw' visualization"),
-    split: str = typer.Option("train", "--split", help="Dataset split to visualize"),
-    figure_name: str | None = typer.Option(None, "--figure-name", "-f", help="Optional output filename"),
-    sample_count: int = typer.Option(9, "--sample-count", "-n", help="Number of samples to show in grid"),
-    data_dir: str = typer.Option("data", "--data-dir", help="Data root for raw images"),
-    processed_dir: str = typer.Option("data/processed", "--processed-dir", help="Directory with processed tensors"),
+    source: Annotated[
+        str, typer.Option("--source", "-s", help="Choose 'processed' or 'raw' visualization")
+    ] = "processed",
+    split: Annotated[
+        str, typer.Option("--split", help="Dataset split to visualize")
+    ] = "train",
+    figure_name: Annotated[
+        Optional[str],  # noqa: UP007
+        typer.Option("--figure-name", "-f", help="Optional output filename"),
+    ] = None,
+    sample_count: Annotated[
+        int, typer.Option("--sample-count", "-n", help="Number of samples to show in grid")
+    ] = 9,
+    data_dir: Annotated[
+        Optional[str],  # noqa: UP007
+        typer.Option("--data-dir", help="Data root for raw images"),
+    ] = None,
+    processed_dir: Annotated[
+        Optional[str],  # noqa: UP007
+        typer.Option("--processed-dir", help="Directory with processed tensors"),
+    ] = None,
+    target: Annotated[
+        Optional[str],  # noqa: UP007
+        typer.Option("--target", help="Override target for embeddings visualization"),
+    ] = None,
+    model_checkpoint: Annotated[
+        Optional[Path],  # noqa: UP007
+        typer.Option("--model-checkpoint", help="Model checkpoint for embeddings"),
+    ] = None,
+    config_name: Annotated[
+        str, typer.Option("--config-name", help="Hydra config name to load.")
+    ] = "default_config",
 ) -> None:
     """Dispatch to raw or processed visualization based on a single flag."""
+    cfg = _load_config(config_name)
+    if data_dir is None:
+        data_dir = cfg.dataloader.data_dir
+    resolved_data_dir = str(_resolve_path(data_dir, _repo_root()))
+    if processed_dir is None:
+        processed_dir = str(Path(resolved_data_dir) / "processed")
+
     normalized = source.lower()
     if normalized == "raw":
         visualize_raw_data(
-            data_dir=data_dir,
+            data_dir=resolved_data_dir,
             split=split,
             figure_name=figure_name or "raw_sample_grid.png",
             sample_count=sample_count,
@@ -257,8 +377,16 @@ def main(
             figure_name=figure_name or "sample_grid.png",
             sample_count=sample_count,
         )
+    elif normalized == "embeddings":
+        visualize(
+            model_checkpoint=model_checkpoint,
+            figure_name=figure_name or "embeddings.png",
+            target=target,
+            data_dir=resolved_data_dir,
+            config_name=config_name,
+        )
     else:
-        raise typer.BadParameter("source must be either 'raw' or 'processed'")
+        raise typer.BadParameter("source must be either 'raw', 'processed', or 'embeddings'")
 
 
 if __name__ == "__main__":
