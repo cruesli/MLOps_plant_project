@@ -35,3 +35,13 @@ jobs:
         run: |
           uv run coverage run -m pytest tests/
           uv run coverage report -m
+
+  check-success:
+    name: Unit Tests  # This matches exactly what the protection rule wants
+    needs: [test]     # Replace 'test' with the ID of your matrix job
+    runs-on: ubuntu-latest
+    if: always()      # Ensures this runs even if others fail to report correctly
+    steps:
+      - name: Check matrix results
+        if: contains(needs.test.result, 'failure') || contains(needs.test.result, 'cancelled')
+        run: exit 1
