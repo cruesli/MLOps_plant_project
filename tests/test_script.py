@@ -1,9 +1,10 @@
 import os
 import subprocess
-from pathlib import Path
 import zipfile
+from pathlib import Path
 
 import pytest
+
 
 @pytest.mark.slow
 def test_get_data_script():
@@ -13,22 +14,22 @@ def test_get_data_script():
     if not kaggle_json_path.exists() and ("KAGGLE_USERNAME" not in os.environ or "KAGGLE_KEY" not in os.environ):
         pytest.skip("Kaggle credentials not found. Skipping test.")
 
-    DATASET = "mohitsingh1804/plantvillage"
-    OUTDIR = Path("data/raw")
-    ZIP = OUTDIR / "plantvillage.zip"
+    dataset = "mohitsingh1804/plantvillage"
+    outdir = Path("data/raw")
+    zip_path = outdir / "plantvillage.zip"
 
-    OUTDIR.mkdir(parents=True, exist_ok=True)
+    outdir.mkdir(parents=True, exist_ok=True)
 
     # Download
     subprocess.run(
-        ["uv", "run", "kaggle", "datasets", "download", "-d", DATASET, "-p", str(OUTDIR)],
+        ["uv", "run", "kaggle", "datasets", "download", "-d", dataset, "-p", str(outdir)],
         check=True,
     )
 
     # Extract
-    with zipfile.ZipFile(ZIP, "r") as zip_ref:
-        zip_ref.extractall(OUTDIR)
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(outdir)
 
     # Check if the data directory is created and not empty
-    assert OUTDIR.exists()
-    assert any(OUTDIR.iterdir())
+    assert outdir.exists()
+    assert any(outdir.iterdir())
