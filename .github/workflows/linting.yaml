@@ -12,7 +12,6 @@ jobs:
   format:
     name: Check code formatting
     runs-on: ubuntu-latest
-    fail-fast: false
 
     steps:
       - name: Checkout code

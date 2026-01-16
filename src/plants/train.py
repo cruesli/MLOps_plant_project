@@ -45,6 +45,7 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
             entity=hparams.wandb.entity,
             project=hparams.wandb.project,
             config=wandb_config,
+            job_type="train",
         )
 
     target = hparams.target
@@ -55,10 +56,13 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
         metadata = json.load(f)
     if target == "class":
         num_classes = len(metadata["class_to_idx"])
+        class_names = [name for name, _ in sorted(metadata["class_to_idx"].items(), key=lambda item: item[1])]
     elif target == "disease":
         num_classes = len(metadata["disease_to_idx"])
+        class_names = [name for name, _ in sorted(metadata["disease_to_idx"].items(), key=lambda item: item[1])]
     elif target == "plant":
         num_classes = len(metadata["plant_to_idx"])
+        class_names = [name for name, _ in sorted(metadata["plant_to_idx"].items(), key=lambda item: item[1])]
     else:
         raise ValueError(f"Unsupported target '{target}'. Expected one of ['class', 'disease', 'plant'] for training.")
     hparams.num_classes = num_classes
@@ -88,9 +92,13 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
     statistics = {"train_loss": [], "train_accuracy": []}
     preds: list[torch.Tensor] = []
     targets: list[torch.Tensor] = []
+    global_step = 0
 
     for epoch in range(hparams.epochs):
         model.train()
+        running_loss = 0.0
+        running_correct = 0
+        running_total = 0
         for i, (img, target) in enumerate(train_dataloader):
             img, target = img.to(device), target.to(device)
             optimizer.zero_grad()
@@ -100,8 +108,18 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
             optimizer.step()
 
             accuracy = (y_pred.argmax(dim=1) == target).float().mean().item()
+            running_loss += loss.item() * target.size(0)
+            running_correct += (y_pred.argmax(dim=1) == target).float().sum().item()
+            running_total += target.size(0)
             if run is not None:
-                wandb.log({"train_loss": loss.item(), "train_accuracy": accuracy})
+                wandb.log(
+                    {
+                        "train_loss": loss.item(),
+                        "train_accuracy": accuracy,
+                        "learning_rate": optimizer.param_groups[0]["lr"],
+                    },
+                    step=global_step,
+                )
             preds.append(y_pred.detach().cpu())
             targets.append(target.detach().cpu())
             if i % 100 == 0:
@@ -117,11 +135,25 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
                     ]
                     wandb.log({"input_images": images})
 
-                    grads = torch.cat([p.grad.flatten() for p in model.parameters() if p.grad is not None], 0)
+                    grads = torch.cat(
+                        [p.grad.flatten() for p in model.parameters() if p.grad is not None], 0
+                    )
                     wandb.log({"gradients": wandb.Histogram(grads.detach().cpu().numpy())})
 
                 statistics["train_loss"].append(loss.item())
                 statistics["train_accuracy"].append(accuracy)
+            global_step += 1
+        if run is not None and running_total:
+            epoch_loss = running_loss / running_total
+            epoch_accuracy = running_correct / running_total
+            wandb.log(
+                {
+                    "epoch": epoch,
+                    "train_epoch_loss": epoch_loss,
+                    "train_epoch_accuracy": epoch_accuracy,
+                },
+                step=global_step,
+            )
     print("Training complete")
 
     # Concatenate stored predictions/targets
@@ -141,6 +173,16 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
             ax=ax_roc,
         )
     if run is not None:
+        if class_names:
+            wandb.log(
+                {
+                    "train_confusion_matrix": wandb.plot.confusion_matrix(
+                        y_true=targets_tensor.cpu().tolist(),
+                        preds=preds_tensor.argmax(dim=1).cpu().tolist(),
+                        class_names=class_names,
+                    )
+                }
+            )
         wandb.log({"roc": wandb.Image(fig_roc)})
     plt.close(fig_roc)
 
@@ -152,6 +194,22 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
     model_path = model_dir / "model.pth"
     torch.save(model.state_dict(), model_path)
     if run is not None:
+        run.summary.update(
+            {
+                "final_accuracy": final_accuracy,
+                "final_precision": final_precision,
+                "final_recall": final_recall,
+                "final_f1": final_f1,
+            }
+        )
+        wandb.log(
+            {
+                "final_accuracy": final_accuracy,
+                "final_precision": final_precision,
+                "final_recall": final_recall,
+                "final_f1": final_f1,
+            }
+        )
         artifact = wandb.Artifact(
             name=hparams.artifact.name,
             type=hparams.artifact.type,

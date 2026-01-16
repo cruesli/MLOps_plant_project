@@ -120,13 +120,18 @@ uv run src/plants/train.py experiments=XXX dataloader=XXX model=XXX
 ```
 
 **4. Evaluate**
-Evaluate a trained model checkpoint:
+Evaluate the just trained model:
 ```bash
-uv run src/plants/evaluate.py models/model.pth
+uv run src/plants/evaluate.py
+```
+
+Or evaluate another model from configs:
+```bash
+uv run src/plants/evaluate.py models=XXX
 ```
 
 **5. Visualize**
-Generate data distribution plots and sample grids in `reports/figures/`:
+Visualize and generate data distribution plots and sample grids in `reports/figures/`:
 ```bash
 uv run src/plants/visualize.py
 ```
