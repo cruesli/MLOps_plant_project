@@ -5,12 +5,12 @@ import hydra
 import matplotlib.pyplot as plt
 import torch
 from hydra.utils import to_absolute_path
-from src.plants.model import Model
 from omegaconf import DictConfig, OmegaConf
 from sklearn.metrics import RocCurveDisplay, accuracy_score, f1_score, precision_score, recall_score
 
 import wandb
 from src.plants.data import MyDataset
+from src.plants.model import Model
 
 
 def _select_device(preference: str) -> torch.device:
