@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import multiprocessing as mp
+import platform
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-import platform
+
 import torch
 import typer
 from PIL import Image
@@ -343,7 +344,7 @@ def main():
 
 
 if __name__ == "__main__":
-    # Windows doesn't support 'fork', only 'spawn'. 
+    # Windows doesn't support 'fork', only 'spawn'.
     # Linux/macOS usually prefer 'fork' for faster data loading.
     if platform.system() != "Windows":
         try:

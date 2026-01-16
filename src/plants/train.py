@@ -5,12 +5,12 @@ import hydra
 import matplotlib.pyplot as plt
 import torch
 from hydra.utils import to_absolute_path
-from src.plants.model import Model
+from model import Model
 from omegaconf import DictConfig, OmegaConf
 from sklearn.metrics import RocCurveDisplay, accuracy_score, f1_score, precision_score, recall_score
 
 import wandb
-from src.plants.data import MyDataset
+from data import MyDataset
 
 
 def _select_device(preference: str) -> torch.device:
@@ -77,6 +77,8 @@ def train(cfg: DictConfig) -> None:
         dropout=cfg.model.dropout,
     )
     model.to(device)
+    if run is not None:
+        run.summary["model_parameters"] = sum(p.numel() for p in model.parameters())
     train_set, _ = dataset.load_plantvillage(target=target)
     train_dataloader = torch.utils.data.DataLoader(
         train_set,
@@ -92,6 +94,9 @@ def train(cfg: DictConfig) -> None:
 
     for epoch in range(hparams.epochs):
         model.train()
+        running_loss = 0.0
+        running_acc = 0.0
+        batches = 0
         for i, (img, target) in enumerate(train_dataloader):
             img, target = img.to(device), target.to(device)
             optimizer.zero_grad()
@@ -101,6 +106,9 @@ def train(cfg: DictConfig) -> None:
             optimizer.step()
 
             accuracy = (y_pred.argmax(dim=1) == target).float().mean().item()
+            running_loss += loss.item()
+            running_acc += accuracy
+            batches += 1
             if run is not None:
                 wandb.log({"train_loss": loss.item(), "train_accuracy": accuracy})
             preds.append(y_pred.detach().cpu())
@@ -123,6 +131,15 @@ def train(cfg: DictConfig) -> None:
 
                 statistics["train_loss"].append(loss.item())
                 statistics["train_accuracy"].append(accuracy)
+        if run is not None and batches:
+            wandb.log(
+                {
+                    "epoch": epoch,
+                    "epoch_train_loss": running_loss / batches,
+                    "epoch_train_accuracy": running_acc / batches,
+                    "learning_rate": optimizer.param_groups[0]["lr"],
+                }
+            )
     print("Training complete")
 
     # Concatenate stored predictions/targets
@@ -152,6 +169,19 @@ def train(cfg: DictConfig) -> None:
 
     model_path = model_dir / "model.pth"
     torch.save(model.state_dict(), model_path)
+    if run is not None:
+        wandb.log(
+            {
+                "final_accuracy": final_accuracy,
+                "final_precision": final_precision,
+                "final_recall": final_recall,
+                "final_f1": final_f1,
+            }
+        )
+        run.summary["final_accuracy"] = final_accuracy
+        run.summary["final_precision"] = final_precision
+        run.summary["final_recall"] = final_recall
+        run.summary["final_f1"] = final_f1
     if run is not None:
         artifact = wandb.Artifact(
             name=hparams.artifact.name,

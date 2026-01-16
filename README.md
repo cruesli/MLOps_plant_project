@@ -120,9 +120,13 @@ uv run src/plants/train.py experiments=XXX dataloader=XXX model=XXX
 ```
 
 **4. Evaluate**
-Evaluate a trained model checkpoint:
+Evaluate the just trained model:
 ```bash
-uv run src/plants/evaluate.py models/model.pth
+uv run src/plants/evaluate.py
+```
+Or another model:
+```bash
+uv run src/plants/evaluate.py model=XXX
 ```
 
 **5. Visualize**

@@ -1,0 +1,33 @@
+experiments:
+  seed: 123
+  epochs: 5
+  lr: 0.001
+  batch_size: 32
+  device: auto
+  target: plant
+  num_classes: null
+  metadata_path: data/processed/metadata.json
+  model_dir: models
+  wandb:
+    enabled: true
+    entity: mlops_plant_group
+    project: plant-project
+  artifact:
+    name: plant-disease-classifier
+    type: model
+    description: A model trained to classify leaves and their health status.
+dataloader:
+  data_dir: data
+  shuffle: true
+  num_workers: 0
+model:
+  num_classes: ${experiments.num_classes}
+  in_channels: 3
+  conv1_out: 32
+  conv1_kernel: 3
+  conv1_stride: 1
+  conv2_out: 64
+  conv2_kernel: 3
+  conv2_stride: 3
+  conv2_padding: 1
+  dropout: 0.2
