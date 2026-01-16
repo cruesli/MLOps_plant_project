@@ -12,6 +12,6 @@ repos:
     hooks:
     -   id: pytest
         name: pytest
-        entry: inv test
+        entry: uv run coverage run -m pytest tests/
         language: system
         stages: [push]
