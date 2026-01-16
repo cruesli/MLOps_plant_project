@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+import multiprocessing as mp
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
-import multiprocessing as mp
+
 import torch
 import typer
 from PIL import Image
@@ -48,10 +49,9 @@ class MyDataset(Dataset):
         self.transform = transforms.Compose(
             [
                 transforms.Resize((128, 128)),
-                transforms.ToTensor(),          # keeps 3 channels if input is RGB
+                transforms.ToTensor(),  # keeps 3 channels if input is RGB
             ]
         )
-
 
         self.images: torch.Tensor | None = None
         self.class_labels: torch.Tensor | None = None
@@ -330,15 +330,18 @@ class MyDataset(Dataset):
             raise ValueError(msg)
         return train_ds, val_ds
 
+
 def preprocess(data_path: Path = Path("data"), show_progress: bool = True) -> None:
     """CLI entrypoint for preprocessing PlantVillage data."""
     print("Preprocessing PlantVillage data...")
     dataset = MyDataset(data_path)
     dataset.preprocess(show_progress=show_progress)
 
+
 def main():
     typer.run(preprocess)
 
+
 if __name__ == "__main__":
-    mp.set_start_method("fork") 
+    mp.set_start_method("fork")
     main()

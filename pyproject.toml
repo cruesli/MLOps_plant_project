@@ -59,6 +59,23 @@ explicit = true
 
 [tool.ruff]
 line-length = 120
+target-version = "py311"
+
+select = [
+    "E",   # PEP8 errors
+    "W",   # PEP8 warnings
+    "F",   # Pyflakes
+    "I",   # Import sorting
+    "N",   # Naming conventions
+    "B",   # Bugbear
+    "UP",  # Modern Python
+    "SIM", # Simplifications
+    "C4",  # Comprehensions
+    "ERA", # Remove unused code
+]
+
+ignore = []
+
 
 [tool.coverage.run]
 omit = ["tests/*"]

@@ -2,12 +2,13 @@ import json
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from PIL import Image
 import torch
 import typer
 from model import Model
+from PIL import Image
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
+
 from data import ALLOWED_EXTENSIONS
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
@@ -94,7 +95,7 @@ def visualize_raw_data(
     fig, axes = plt.subplots(rows, cols, figsize=(8, 8))
     axes_flat = list(axes.flat) if hasattr(axes, "flat") else [axes]
 
-    for ax, img_path in zip(axes_flat, sample_paths):
+    for ax, img_path in zip(axes_flat, sample_paths, strict=False):
         with Image.open(img_path) as img:
             rgb = img.convert("RGB")
             h, w = rgb.height, rgb.width
@@ -163,9 +164,11 @@ def visualize_processed_data(
         if sp_path.exists():
             split_sizes[sp] = torch.load(sp_path).shape[0]
 
-    def _counts_to_named(unique_tensor: torch.Tensor, counts_tensor: torch.Tensor, mapping: dict[int, str]) -> dict[str, int]:
+    def _counts_to_named(
+        unique_tensor: torch.Tensor, counts_tensor: torch.Tensor, mapping: dict[int, str]
+    ) -> dict[str, int]:
         result: dict[str, int] = {}
-        for label_idx, count in zip(unique_tensor.tolist(), counts_tensor.tolist()):
+        for label_idx, count in zip(unique_tensor.tolist(), counts_tensor.tolist(), strict=False):
             name = mapping.get(label_idx, str(label_idx))
             result[name] = count
         return result
@@ -194,17 +197,21 @@ def visualize_processed_data(
     typer.echo(f"Diseases ({len(disease_to_idx)}): {_counts_to_named(disease_unique, disease_counts, idx_to_disease)}")
     typer.echo(f"Plants ({len(plant_to_idx)}): {_counts_to_named(plant_unique, plant_counts, idx_to_plant)}")
 
-    _plot_distribution(class_unique, class_counts, idx_to_class, f"{split} class distribution", f"{split}_class_dist.png")
+    _plot_distribution(
+        class_unique, class_counts, idx_to_class, f"{split} class distribution", f"{split}_class_dist.png"
+    )
     _plot_distribution(
         disease_unique, disease_counts, idx_to_disease, f"{split} disease distribution", f"{split}_disease_dist.png"
     )
-    _plot_distribution(plant_unique, plant_counts, idx_to_plant, f"{split} plant distribution", f"{split}_plant_dist.png")
+    _plot_distribution(
+        plant_unique, plant_counts, idx_to_plant, f"{split} plant distribution", f"{split}_plant_dist.png"
+    )
 
     sample_count = min(sample_count, images.shape[0])
     sample_indices = torch.linspace(0, images.shape[0] - 1, steps=sample_count, dtype=torch.long)
 
     fig, axes = plt.subplots(3, 3, figsize=(8, 8))
-    for ax, idx in zip(axes.flat, sample_indices.tolist()):
+    for ax, idx in zip(axes.flat, sample_indices.tolist(), strict=False):
         img = images[idx].permute(1, 2, 0)  # (H, W, C)
         if mean_val is not None and std_val is not None:
             img = img * float(std_val) + float(mean_val)

@@ -4,13 +4,13 @@ from pathlib import Path
 import hydra
 import matplotlib.pyplot as plt
 import torch
-import wandb
 from hydra.utils import to_absolute_path
+from model import Model
 from omegaconf import DictConfig, OmegaConf
 from sklearn.metrics import RocCurveDisplay, accuracy_score, f1_score, precision_score, recall_score
 
+import wandb
 from data import MyDataset
-from model import Model
 
 
 def _select_device(preference: str) -> torch.device:
@@ -61,9 +61,7 @@ def train(cfg: DictConfig) -> None:
     elif target == "plant":
         num_classes = len(metadata["plant_to_idx"])
     else:
-        raise ValueError(
-            f"Unsupported target '{target}'. Expected one of ['class', 'disease', 'plant'] for training."
-        )
+        raise ValueError(f"Unsupported target '{target}'. Expected one of ['class', 'disease', 'plant'] for training.")
     hparams.num_classes = num_classes
 
     model = Model(

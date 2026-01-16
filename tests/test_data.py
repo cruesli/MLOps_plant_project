@@ -1,18 +1,19 @@
-from torch.utils.data import Dataset, TensorDataset
-from plants.data import MyDataset
 import torch
+from plants.data import MyDataset
+from torch.utils.data import Dataset, TensorDataset
+
 
 def test_my_dataset():
     """Test the MyDataset class."""
     # To run this test, we need to have the data preprocessed.
     # We will create a dummy preprocessed dataset.
-    
+
     # Create dummy data and metadata
     dummy_train_images = torch.randn(10, 1, 28, 28)
     dummy_train_labels = torch.randint(0, 5, (10,))
     dummy_train_disease = torch.randint(0, 2, (10,))
     dummy_train_plant = torch.randint(0, 3, (10,))
-    
+
     dummy_val_images = torch.randn(5, 1, 28, 28)
     dummy_val_labels = torch.randint(0, 5, (5,))
     dummy_val_disease = torch.randint(0, 2, (5,))
@@ -43,16 +44,17 @@ def test_my_dataset():
         "splits": {"train": "dummy_train", "val": "dummy_val"},
     }
     (processed_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
-    
+
     dataset = MyDataset("data", split="train", target="class")
     assert isinstance(dataset, Dataset)
     assert len(dataset) == 10
-    
+
     train_ds, val_ds = dataset.load_plantvillage(target="class")
     assert isinstance(train_ds, TensorDataset)
     assert isinstance(val_ds, TensorDataset)
     assert len(train_ds) == 10
     assert len(val_ds) == 5
+
 
 def test_dataset_getitem():
     """Test the __getitem__ method of the MyDataset class."""

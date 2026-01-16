@@ -3,8 +3,10 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 from torch import nn
 
+
 class Model(nn.Module):
     """My awesome model. currently setup for plant target classification."""
+
     def __init__(
         self,
         num_classes: int,
