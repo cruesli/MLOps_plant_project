@@ -78,9 +78,16 @@ ignore = []
 
 
 [tool.coverage.run]
-omit = ["tests/*"]
+omit = [
+    "tests/*",
+    "/tmp/*",  # Add this to ignore the temp files causing the crash
+]
 
-[tool.pytest.ini_options]
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+[tool.coverage.report]
+# This tells coverage not to fail the whole process if it can't find a source file
+ignore_errors = true
+# Optional: exclude lines that shouldn't be counted (like main blocks)
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
 ]
