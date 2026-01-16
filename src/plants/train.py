@@ -27,8 +27,7 @@ def _select_device(preference: str) -> torch.device:
     return torch.device("cpu")
 
 
-@hydra.main(version_base=None, config_path="../../configs", config_name="default_config")
-def train(cfg: DictConfig) -> None:
+def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested directly
     print(f"configuration: \n{OmegaConf.to_yaml(cfg)}")
     hparams = cfg.experiments
     torch.manual_seed(hparams.seed) # My change: set the seed
@@ -166,6 +165,11 @@ def train(cfg: DictConfig) -> None:
         )
         artifact.add_file(str(model_path))
         run.log_artifact(artifact)
+
+
+@hydra.main(version_base=None, config_path="../../configs", config_name="default_config")
+def train(cfg: DictConfig) -> None:
+    _train_model(cfg)
 
 
 if __name__ == "__main__":
