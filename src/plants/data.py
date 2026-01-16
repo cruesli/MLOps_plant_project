@@ -5,7 +5,7 @@ import multiprocessing as mp
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-
+import platform
 import torch
 import typer
 from PIL import Image
@@ -343,5 +343,17 @@ def main():
 
 
 if __name__ == "__main__":
-    mp.set_start_method("fork")
+    # Windows doesn't support 'fork', only 'spawn'. 
+    # Linux/macOS usually prefer 'fork' for faster data loading.
+    if platform.system() != "Windows":
+        try:
+            mp.set_start_method("fork", force=True)
+        except RuntimeError:
+            pass  # Method might already be set
+    else:
+        try:
+            mp.set_start_method("spawn", force=True)
+        except RuntimeError:
+            pass
+
     main()
