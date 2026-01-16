@@ -109,9 +109,14 @@ uv run src/plants/data.py
 ```
 
 **3. Train Model**
-Train the model. You can specify hyperparameters like learning rate and epochs:
+Train the model. You can run the default hyperparameters from the config files using the following:
 ```bash
-uv run src/plants/train.py --epochs 5 --batch-size 32 --lr 0.001
+uv run src/plants/train.py
+```
+
+Or you can specify what configuration you want to try from the configs directory:
+```bash
+uv run src/plants/train.py experiments=XXX dataloader=XXX model=XXX
 ```
 
 **4. Evaluate**
