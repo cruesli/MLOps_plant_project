@@ -12,6 +12,6 @@ repos:
     hooks:
     -   id: pytest
         name: pytest
-        entry: pytest
+        entry: inv test
         language: system
         stages: [push]
