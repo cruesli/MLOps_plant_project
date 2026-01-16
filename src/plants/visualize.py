@@ -4,12 +4,12 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import torch
 import typer
-from model import Model
+from src.plants.model import Model
 from PIL import Image
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
-from data import ALLOWED_EXTENSIONS
+from src.plants.data import ALLOWED_EXTENSIONS
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
