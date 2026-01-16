@@ -31,7 +31,7 @@ def _select_device(preference: str) -> torch.device:
 def train(cfg: DictConfig) -> None:
     print(f"configuration: \n{OmegaConf.to_yaml(cfg)}")
     hparams = cfg.experiments
-    torch.manual_seed(hparams.seed)
+    torch.manual_seed(hparams.seed) # My change: set the seed
     device = _select_device(hparams.device)
 
     data_dir = to_absolute_path(cfg.dataloader.data_dir)
