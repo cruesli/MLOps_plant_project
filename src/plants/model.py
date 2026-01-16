@@ -10,15 +10,15 @@ class Model(nn.Module):
     def __init__(
         self,
         num_classes: int,
-        in_channels: int,
-        conv1_out: int,
-        conv1_kernel: int,
-        conv1_stride: int,
-        conv2_out: int,
-        conv2_kernel: int,
-        conv2_stride: int,
-        conv2_padding: int,
-        dropout: float,
+        in_channels: int = 1,
+        conv1_out: int = 32,
+        conv1_kernel: int = 3,
+        conv1_stride: int = 1,
+        conv2_out: int = 64,
+        conv2_kernel: int = 3,
+        conv2_stride: int = 1,
+        conv2_padding: int = 1,
+        dropout: float = 0.25,
     ) -> None:
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels, conv1_out, conv1_kernel, conv1_stride)
