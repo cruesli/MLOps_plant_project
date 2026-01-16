@@ -28,7 +28,7 @@ def test_get_data_script():
     # Extract
     with zipfile.ZipFile(ZIP, "r") as zip_ref:
         zip_ref.extractall(OUTDIR)
-    
+
     # Check if the data directory is created and not empty
     assert OUTDIR.exists()
     assert any(OUTDIR.iterdir())

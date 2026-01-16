@@ -91,7 +91,7 @@ def test_data_structure_and_amount():
 
     with open("data/processed/metadata.json") as f:
         metadata = json.load(f)
-    
+
     assert len(metadata["class_to_idx"]) == 5
     assert len(metadata["disease_to_idx"]) == 2
     assert len(metadata["plant_to_idx"]) == 3
