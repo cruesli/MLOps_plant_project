@@ -48,9 +48,9 @@ class MyDataset(Dataset):
         self.split = split
         self.target = target
 
-        VALID_TARGETS = {"class", "disease", "plant", "both", "all"}
-        if self.target not in VALID_TARGETS:
-            msg = f"Unknown target '{self.target}'. Expected one of {sorted(list(VALID_TARGETS))}."
+        valid_targets = {"class", "disease", "plant", "both", "all"}
+        if self.target not in valid_targets:
+            msg = f"Unknown target '{self.target}'. Expected one of {sorted(valid_targets)}."
             raise ValueError(msg)
 
         self.transform = transforms.Compose(

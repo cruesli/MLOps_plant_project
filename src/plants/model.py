@@ -10,7 +10,7 @@ class Model(nn.Module):
     def __init__(
         self,
         num_classes: int,
-        in_channels: int = 1,
+        in_channels: int = 3,
         conv1_out: int = 32,
         conv1_kernel: int = 3,
         conv1_stride: int = 1,

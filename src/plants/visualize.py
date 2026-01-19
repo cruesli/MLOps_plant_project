@@ -1,4 +1,5 @@
 import json
+import sys
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -10,8 +11,11 @@ from PIL import Image
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
-from src.plants.data import ALLOWED_EXTENSIONS
-from src.plants.model import Model
+
+def _ensure_repo_root_on_path() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
 
 
 def _repo_root() -> Path:
@@ -65,6 +69,8 @@ def visualize(
     config_name: str = "default_config",
 ) -> None:
     """Visualize model predictions."""
+    from src.plants.model import Model
+
     cfg = _load_config(config_name)
     hparams = cfg.experiments
     if target is None:
@@ -84,11 +90,25 @@ def visualize(
         raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
 
     metadata = json.loads(metadata_path.read_text())
-    num_classes, idx_to_name = _class_metadata(metadata, target)
+    label_count, idx_to_name = _class_metadata(metadata, target)
+
+    state = torch.load(checkpoint_path, map_location="cpu")
+    state_num_classes = int(state["fc1.weight"].shape[0])
+    state_in_channels = int(state["conv1.weight"].shape[1])
+    if state_num_classes != label_count:
+        print(
+            f"Warning: checkpoint has {state_num_classes} classes, but metadata has {label_count}. "
+            "Using checkpoint classes for embeddings."
+        )
+    if state_in_channels != int(cfg.model.in_channels):
+        print(
+            f"Warning: checkpoint expects {state_in_channels} input channel(s), but config has "
+            f"{cfg.model.in_channels}. Using checkpoint channels for embeddings."
+        )
 
     model: torch.nn.Module = Model(
-        num_classes=num_classes,
-        in_channels=cfg.model.in_channels,
+        num_classes=state_num_classes,
+        in_channels=state_in_channels,
         conv1_out=cfg.model.conv1_out,
         conv1_kernel=cfg.model.conv1_kernel,
         conv1_stride=cfg.model.conv1_stride,
@@ -98,7 +118,7 @@ def visualize(
         conv2_padding=cfg.model.conv2_padding,
         dropout=cfg.model.dropout,
     )
-    model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+    model.load_state_dict(state)
     model.to(device)
     model.eval()
     model.fc1 = torch.nn.Identity()
@@ -134,7 +154,7 @@ def visualize(
     embeddings = tsne.fit_transform(embeddings)
 
     plt.figure(figsize=(10, 10))
-    for i in range(min(10, num_classes)):
+    for i in range(min(10, label_count)):
         mask = targets == i
         label = idx_to_name.get(int(i), str(i))
         plt.scatter(embeddings[mask, 0], embeddings[mask, 1], label=label)
@@ -153,6 +173,8 @@ def visualize_raw_data(
     sample_count: int = 9,
 ) -> dict[tuple[int, int, int], int]:
     """Visualize raw images (folders per label) and report shape consistency."""
+    from src.plants.data import ALLOWED_EXTENSIONS
+
     reports_dir = Path("reports/figures")
     reports_dir.mkdir(parents=True, exist_ok=True)
 
@@ -324,16 +346,12 @@ def main(
     source: Annotated[
         str, typer.Option("--source", "-s", help="Choose 'processed' or 'raw' visualization")
     ] = "processed",
-    split: Annotated[
-        str, typer.Option("--split", help="Dataset split to visualize")
-    ] = "train",
+    split: Annotated[str, typer.Option("--split", help="Dataset split to visualize")] = "train",
     figure_name: Annotated[
         Optional[str],  # noqa: UP007
         typer.Option("--figure-name", "-f", help="Optional output filename"),
     ] = None,
-    sample_count: Annotated[
-        int, typer.Option("--sample-count", "-n", help="Number of samples to show in grid")
-    ] = 9,
+    sample_count: Annotated[int, typer.Option("--sample-count", "-n", help="Number of samples to show in grid")] = 9,
     data_dir: Annotated[
         Optional[str],  # noqa: UP007
         typer.Option("--data-dir", help="Data root for raw images"),
@@ -350,9 +368,7 @@ def main(
         Optional[Path],  # noqa: UP007
         typer.Option("--model-checkpoint", help="Model checkpoint for embeddings"),
     ] = None,
-    config_name: Annotated[
-        str, typer.Option("--config-name", help="Hydra config name to load.")
-    ] = "default_config",
+    config_name: Annotated[str, typer.Option("--config-name", help="Hydra config name to load.")] = "default_config",
 ) -> None:
     """Dispatch to raw or processed visualization based on a single flag."""
     cfg = _load_config(config_name)
@@ -390,4 +406,5 @@ def main(
 
 
 if __name__ == "__main__":
+    _ensure_repo_root_on_path()
     typer.run(main)
