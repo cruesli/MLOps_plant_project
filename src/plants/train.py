@@ -107,6 +107,7 @@ def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested dire
     )
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=hparams.lr)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
     statistics = {"train_loss": [], "train_accuracy": []}
     preds: list[torch.Tensor] = []
     targets: list[torch.Tensor] = []
@@ -175,6 +176,7 @@ def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested dire
                     "global_step": global_step,
                 },
             )
+            scheduler.step()
     print("Training complete")
 
     # Concatenate stored predictions/targets

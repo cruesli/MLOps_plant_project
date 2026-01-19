@@ -111,8 +111,8 @@ def evaluate(
     num_classes, class_names = _class_metadata(metadata, hparams.target)
 
     state = torch.load(checkpoint_path, map_location="cpu")
-    state_num_classes = int(state["fc1.weight"].shape[0])
-    state_in_channels = int(state["conv1.weight"].shape[1])
+    state_num_classes = int(state["fc.weight"].shape[0])
+    state_in_channels = int(state["layer1.0.weight"].shape[1])
     if state_num_classes != num_classes:
         print(
             f"Warning: checkpoint has {state_num_classes} classes, but metadata has {num_classes}. "
