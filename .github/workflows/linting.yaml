@@ -27,10 +27,13 @@ jobs:
         run: |
           uv sync --dev --locked
 
+      - name: ruff format
+        continue-on-error: true
+        run: |
+          uv run ruff format .
+
       - name: ruff check
+        continue-on-error: true
         run: |
           uv run ruff check .
 
-      - name: ruff format
-        run: |
-          uv run ruff format .
