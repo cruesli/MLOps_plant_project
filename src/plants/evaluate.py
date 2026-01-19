@@ -1,4 +1,5 @@
 import json
+import sys
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -9,8 +10,12 @@ from omegaconf import DictConfig, OmegaConf
 from sklearn.metrics import accuracy_score, classification_report, f1_score, precision_score, recall_score
 
 import wandb
-from src.plants.data import MyDataset
-from src.plants.model import Model
+
+
+def _ensure_repo_root_on_path() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
 
 
 def _repo_root() -> Path:
@@ -75,11 +80,12 @@ def evaluate(
         Optional[Path],  # noqa: UP007
         typer.Option("--data-dir", help="Override data directory from config."),
     ] = None,
-    config_name: Annotated[
-        str, typer.Option("--config-name", help="Hydra config name to load.")
-    ] = "default_config",
+    config_name: Annotated[str, typer.Option("--config-name", help="Hydra config name to load.")] = "default_config",
 ) -> None:
     """Evaluate a trained model."""
+    from src.plants.data import MyDataset
+    from src.plants.model import Model
+
     cfg = _load_config(config_name)
     hparams = cfg.experiments
 
@@ -104,9 +110,25 @@ def evaluate(
         metadata = json.load(f)
     num_classes, class_names = _class_metadata(metadata, hparams.target)
 
+    state = torch.load(checkpoint_path, map_location="cpu")
+    state_num_classes = int(state["fc1.weight"].shape[0])
+    state_in_channels = int(state["conv1.weight"].shape[1])
+    if state_num_classes != num_classes:
+        print(
+            f"Warning: checkpoint has {state_num_classes} classes, but metadata has {num_classes}. "
+            "Using checkpoint classes for evaluation."
+        )
+        num_classes = state_num_classes
+        class_names = [f"class_{idx}" for idx in range(num_classes)]
+    if state_in_channels != int(cfg.model.in_channels):
+        print(
+            f"Warning: checkpoint expects {state_in_channels} input channel(s), but config has "
+            f"{cfg.model.in_channels}. Using checkpoint channels for evaluation."
+        )
+
     model = Model(
         num_classes=num_classes,
-        in_channels=cfg.model.in_channels,
+        in_channels=state_in_channels,
         conv1_out=cfg.model.conv1_out,
         conv1_kernel=cfg.model.conv1_kernel,
         conv1_stride=cfg.model.conv1_stride,
@@ -116,7 +138,6 @@ def evaluate(
         conv2_padding=cfg.model.conv2_padding,
         dropout=cfg.model.dropout,
     )
-    state = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(state)
     model.to(device)
 
@@ -222,4 +243,5 @@ def evaluate(
 
 
 if __name__ == "__main__":
+    _ensure_repo_root_on_path()
     typer.run(evaluate)

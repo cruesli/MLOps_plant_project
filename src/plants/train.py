@@ -1,4 +1,5 @@
 import json
+import sys
 from pathlib import Path
 
 import hydra
@@ -9,8 +10,12 @@ from omegaconf import DictConfig, OmegaConf
 from sklearn.metrics import RocCurveDisplay, accuracy_score, f1_score, precision_score, recall_score
 
 import wandb
-from src.plants.data import MyDataset
-from src.plants.model import Model
+
+
+def _ensure_repo_root_on_path() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
 
 
 def _select_device(preference: str) -> torch.device:
@@ -27,10 +32,13 @@ def _select_device(preference: str) -> torch.device:
     return torch.device("cpu")
 
 
-def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested directly
+def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested directly
+    from src.plants.data import MyDataset
+    from src.plants.model import Model
+
     print(f"configuration: \n{OmegaConf.to_yaml(cfg)}")
     hparams = cfg.experiments
-    torch.manual_seed(hparams.seed) # My change: set the seed
+    torch.manual_seed(hparams.seed)  # My change: set the seed
     device = _select_device(hparams.device)
 
     data_dir = to_absolute_path(cfg.dataloader.data_dir)
@@ -47,6 +55,7 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
             config=wandb_config,
             job_type="train",
         )
+        wandb.define_metric("*", step_metric="global_step")
 
     target = hparams.target
     dataset = MyDataset(data_dir, target=target)
@@ -67,9 +76,19 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
         raise ValueError(f"Unsupported target '{target}'. Expected one of ['class', 'disease', 'plant'] for training.")
     hparams.num_classes = num_classes
 
+    train_set, _ = dataset.load_plantvillage(target=target)
+    data_channels = int(train_set.tensors[0].shape[1])
+    in_channels = int(cfg.model.in_channels)
+    if data_channels != in_channels:
+        print(
+            f"Warning: data has {data_channels} channel(s), but config expects {in_channels}. "
+            f"Using {data_channels} for this run."
+        )
+        in_channels = data_channels
+
     model = Model(
         num_classes=num_classes,
-        in_channels=cfg.model.in_channels,
+        in_channels=in_channels,
         conv1_out=cfg.model.conv1_out,
         conv1_kernel=cfg.model.conv1_kernel,
         conv1_stride=cfg.model.conv1_stride,
@@ -80,7 +99,6 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
         dropout=cfg.model.dropout,
     )
     model.to(device)
-    train_set, _ = dataset.load_plantvillage(target=target)
     train_dataloader = torch.utils.data.DataLoader(
         train_set,
         batch_size=hparams.batch_size,
@@ -117,8 +135,8 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
                         "train_loss": loss.item(),
                         "train_accuracy": accuracy,
                         "learning_rate": optimizer.param_groups[0]["lr"],
+                        "global_step": global_step,
                     },
-                    step=global_step,
                 )
             preds.append(y_pred.detach().cpu())
             targets.append(target.detach().cpu())
@@ -133,12 +151,15 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
                         )
                         for idx, single_img in enumerate(img[:5])
                     ]
-                    wandb.log({"input_images": images})
+                    wandb.log({"input_images": images, "global_step": global_step})
 
-                    grads = torch.cat(
-                        [p.grad.flatten() for p in model.parameters() if p.grad is not None], 0
+                    grads = torch.cat([p.grad.flatten() for p in model.parameters() if p.grad is not None], 0)
+                    wandb.log(
+                        {
+                            "gradients": wandb.Histogram(grads.detach().cpu().numpy()),
+                            "global_step": global_step,
+                        }
                     )
-                    wandb.log({"gradients": wandb.Histogram(grads.detach().cpu().numpy())})
 
                 statistics["train_loss"].append(loss.item())
                 statistics["train_accuracy"].append(accuracy)
@@ -151,8 +172,8 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
                     "epoch": epoch,
                     "train_epoch_loss": epoch_loss,
                     "train_epoch_accuracy": epoch_accuracy,
+                    "global_step": global_step,
                 },
-                step=global_step,
             )
     print("Training complete")
 
@@ -180,10 +201,11 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
                         y_true=targets_tensor.cpu().tolist(),
                         preds=preds_tensor.argmax(dim=1).cpu().tolist(),
                         class_names=class_names,
-                    )
+                    ),
+                    "global_step": global_step,
                 }
             )
-        wandb.log({"roc": wandb.Image(fig_roc)})
+        wandb.log({"roc": wandb.Image(fig_roc), "global_step": global_step})
     plt.close(fig_roc)
 
     final_accuracy = accuracy_score(targets_tensor.cpu(), preds_tensor.argmax(dim=1).cpu())
@@ -208,6 +230,7 @@ def _train_model(cfg: DictConfig) -> None: # Renamed and now can be tested direc
                 "final_precision": final_precision,
                 "final_recall": final_recall,
                 "final_f1": final_f1,
+                "global_step": global_step,
             }
         )
         artifact = wandb.Artifact(
@@ -231,4 +254,5 @@ def train(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
+    _ensure_repo_root_on_path()
     train()

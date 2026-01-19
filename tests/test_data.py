@@ -1,8 +1,9 @@
-import torch
-from torch.utils.data import Dataset, TensorDataset
 import json
 from pathlib import Path
+
 import pytest
+import torch
+from torch.utils.data import Dataset, TensorDataset
 
 from src.plants.data import MyDataset
 
@@ -13,12 +14,12 @@ def test_my_dataset():
     # We will create a dummy preprocessed dataset.
 
     # Create dummy data and metadata
-    dummy_train_images = torch.randn(10, 1, 28, 28)
+    dummy_train_images = torch.randn(10, 3, 28, 28)
     dummy_train_labels = torch.randint(0, 5, (10,))
     dummy_train_disease = torch.randint(0, 2, (10,))
     dummy_train_plant = torch.randint(0, 3, (10,))
 
-    dummy_val_images = torch.randn(5, 1, 28, 28)
+    dummy_val_images = torch.randn(5, 3, 28, 28)
     dummy_val_labels = torch.randint(0, 5, (5,))
     dummy_val_disease = torch.randint(0, 2, (5,))
     dummy_val_plant = torch.randint(0, 3, (5,))
@@ -63,7 +64,7 @@ def test_dataset_getitem():
     img, label = dataset[0]
     assert isinstance(img, torch.Tensor)
     assert isinstance(label, torch.Tensor)
-    assert img.shape == (1, 28, 28)
+    assert img.shape == (3, 28, 28)
     assert label.shape == ()
 
 
@@ -79,12 +80,12 @@ def test_data_structure_and_amount():
     val_disease = torch.load("data/processed/val_disease_labels.pt")
     val_plant = torch.load("data/processed/val_plant_labels.pt")
 
-    assert train_images.shape == (10, 1, 28, 28)
+    assert train_images.shape == (10, 3, 28, 28)
     assert train_labels.shape == (10,)
     assert train_disease.shape == (10,)
     assert train_plant.shape == (10,)
 
-    assert val_images.shape == (5, 1, 28, 28)
+    assert val_images.shape == (5, 3, 28, 28)
     assert val_labels.shape == (5,)
     assert val_disease.shape == (5,)
     assert val_plant.shape == (5,)
