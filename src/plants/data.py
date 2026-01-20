@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 import multiprocessing as mp
+import platform
 from collections.abc import Iterable
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
-import platform
+
 import torch
 import typer
 from PIL import Image
@@ -46,6 +48,11 @@ class MyDataset(Dataset):
         self.split = split
         self.target = target
 
+        valid_targets = {"class", "disease", "plant", "both", "all"}
+        if self.target not in valid_targets:
+            msg = f"Unknown target '{self.target}'. Expected one of {sorted(valid_targets)}."
+            raise ValueError(msg)
+
         self.transform = transforms.Compose(
             [
                 transforms.Resize((128, 128)),
@@ -85,7 +92,7 @@ class MyDataset(Dataset):
                 self.disease_labels[index],
                 self.plant_labels[index],
             )
-        msg = f"Unknown target '{self.target}'. Expected one of ['class', 'disease', 'both']."
+        msg = f"Unknown target '{self.target}'. Expected one of ['class', 'disease', 'plant', 'both', 'all']."
         raise ValueError(msg)
 
     @staticmethod
@@ -343,17 +350,13 @@ def main():
 
 
 if __name__ == "__main__":
-    # Windows doesn't support 'fork', only 'spawn'. 
+    # Windows doesn't support 'fork', only 'spawn'.
     # Linux/macOS usually prefer 'fork' for faster data loading.
     if platform.system() != "Windows":
-        try:
+        with suppress(RuntimeError):
             mp.set_start_method("fork", force=True)
-        except RuntimeError:
-            pass  # Method might already be set
     else:
-        try:
+        with suppress(RuntimeError):
             mp.set_start_method("spawn", force=True)
-        except RuntimeError:
-            pass
 
     main()

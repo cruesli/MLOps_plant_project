@@ -1,0 +1,3 @@
+# This project uses 'uv' for dependency management.
+# To install dependencies, please run:
+uv sync

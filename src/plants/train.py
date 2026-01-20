@@ -1,16 +1,21 @@
 import json
+import sys
 from pathlib import Path
 
 import hydra
 import matplotlib.pyplot as plt
 import torch
 from hydra.utils import to_absolute_path
-from model import Model
 from omegaconf import DictConfig, OmegaConf
 from sklearn.metrics import RocCurveDisplay, accuracy_score, f1_score, precision_score, recall_score
 
 import wandb
-from data import MyDataset
+
+
+def _ensure_repo_root_on_path() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
 
 
 def _select_device(preference: str) -> torch.device:
@@ -27,11 +32,13 @@ def _select_device(preference: str) -> torch.device:
     return torch.device("cpu")
 
 
-@hydra.main(version_base=None, config_path="../../configs", config_name="default_config")
-def train(cfg: DictConfig) -> None:
+def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested directly
+    from src.plants.data import MyDataset
+    from src.plants.model import Model
+
     print(f"configuration: \n{OmegaConf.to_yaml(cfg)}")
     hparams = cfg.experiments
-    torch.manual_seed(hparams.seed)
+    torch.manual_seed(hparams.seed)  # My change: set the seed
     device = _select_device(hparams.device)
 
     data_dir = to_absolute_path(cfg.dataloader.data_dir)
@@ -46,7 +53,9 @@ def train(cfg: DictConfig) -> None:
             entity=hparams.wandb.entity,
             project=hparams.wandb.project,
             config=wandb_config,
+            job_type="train",
         )
+        wandb.define_metric("*", step_metric="global_step")
 
     target = hparams.target
     dataset = MyDataset(data_dir, target=target)
@@ -56,17 +65,30 @@ def train(cfg: DictConfig) -> None:
         metadata = json.load(f)
     if target == "class":
         num_classes = len(metadata["class_to_idx"])
+        class_names = [name for name, _ in sorted(metadata["class_to_idx"].items(), key=lambda item: item[1])]
     elif target == "disease":
         num_classes = len(metadata["disease_to_idx"])
+        class_names = [name for name, _ in sorted(metadata["disease_to_idx"].items(), key=lambda item: item[1])]
     elif target == "plant":
         num_classes = len(metadata["plant_to_idx"])
+        class_names = [name for name, _ in sorted(metadata["plant_to_idx"].items(), key=lambda item: item[1])]
     else:
         raise ValueError(f"Unsupported target '{target}'. Expected one of ['class', 'disease', 'plant'] for training.")
     hparams.num_classes = num_classes
 
+    train_set, _ = dataset.load_plantvillage(target=target)
+    data_channels = int(train_set.tensors[0].shape[1])
+    in_channels = int(cfg.model.in_channels)
+    if data_channels != in_channels:
+        print(
+            f"Warning: data has {data_channels} channel(s), but config expects {in_channels}. "
+            f"Using {data_channels} for this run."
+        )
+        in_channels = data_channels
+
     model = Model(
         num_classes=num_classes,
-        in_channels=cfg.model.in_channels,
+        in_channels=in_channels,
         conv1_out=cfg.model.conv1_out,
         conv1_kernel=cfg.model.conv1_kernel,
         conv1_stride=cfg.model.conv1_stride,
@@ -77,7 +99,6 @@ def train(cfg: DictConfig) -> None:
         dropout=cfg.model.dropout,
     )
     model.to(device)
-    train_set, _ = dataset.load_plantvillage(target=target)
     train_dataloader = torch.utils.data.DataLoader(
         train_set,
         batch_size=hparams.batch_size,
@@ -86,12 +107,17 @@ def train(cfg: DictConfig) -> None:
     )
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=hparams.lr)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
     statistics = {"train_loss": [], "train_accuracy": []}
     preds: list[torch.Tensor] = []
     targets: list[torch.Tensor] = []
+    global_step = 0
 
     for epoch in range(hparams.epochs):
         model.train()
+        running_loss = 0.0
+        running_correct = 0
+        running_total = 0
         for i, (img, target) in enumerate(train_dataloader):
             img, target = img.to(device), target.to(device)
             optimizer.zero_grad()
@@ -101,8 +127,18 @@ def train(cfg: DictConfig) -> None:
             optimizer.step()
 
             accuracy = (y_pred.argmax(dim=1) == target).float().mean().item()
+            running_loss += loss.item() * target.size(0)
+            running_correct += (y_pred.argmax(dim=1) == target).float().sum().item()
+            running_total += target.size(0)
             if run is not None:
-                wandb.log({"train_loss": loss.item(), "train_accuracy": accuracy})
+                wandb.log(
+                    {
+                        "train_loss": loss.item(),
+                        "train_accuracy": accuracy,
+                        "learning_rate": optimizer.param_groups[0]["lr"],
+                        "global_step": global_step,
+                    },
+                )
             preds.append(y_pred.detach().cpu())
             targets.append(target.detach().cpu())
             if i % 100 == 0:
@@ -116,13 +152,31 @@ def train(cfg: DictConfig) -> None:
                         )
                         for idx, single_img in enumerate(img[:5])
                     ]
-                    wandb.log({"input_images": images})
+                    wandb.log({"input_images": images, "global_step": global_step})
 
                     grads = torch.cat([p.grad.flatten() for p in model.parameters() if p.grad is not None], 0)
-                    wandb.log({"gradients": wandb.Histogram(grads.detach().cpu().numpy())})
+                    wandb.log(
+                        {
+                            "gradients": wandb.Histogram(grads.detach().cpu().numpy()),
+                            "global_step": global_step,
+                        }
+                    )
 
                 statistics["train_loss"].append(loss.item())
                 statistics["train_accuracy"].append(accuracy)
+            global_step += 1
+        if run is not None and running_total:
+            epoch_loss = running_loss / running_total
+            epoch_accuracy = running_correct / running_total
+            wandb.log(
+                {
+                    "epoch": epoch,
+                    "train_epoch_loss": epoch_loss,
+                    "train_epoch_accuracy": epoch_accuracy,
+                    "global_step": global_step,
+                },
+            )
+            scheduler.step()
     print("Training complete")
 
     # Concatenate stored predictions/targets
@@ -142,7 +196,18 @@ def train(cfg: DictConfig) -> None:
             ax=ax_roc,
         )
     if run is not None:
-        wandb.log({"roc": wandb.Image(fig_roc)})
+        if class_names:
+            wandb.log(
+                {
+                    "train_confusion_matrix": wandb.plot.confusion_matrix(
+                        y_true=targets_tensor.cpu().tolist(),
+                        preds=preds_tensor.argmax(dim=1).cpu().tolist(),
+                        class_names=class_names,
+                    ),
+                    "global_step": global_step,
+                }
+            )
+        wandb.log({"roc": wandb.Image(fig_roc), "global_step": global_step})
     plt.close(fig_roc)
 
     final_accuracy = accuracy_score(targets_tensor.cpu(), preds_tensor.argmax(dim=1).cpu())
@@ -153,6 +218,23 @@ def train(cfg: DictConfig) -> None:
     model_path = model_dir / "model.pth"
     torch.save(model.state_dict(), model_path)
     if run is not None:
+        run.summary.update(
+            {
+                "final_accuracy": final_accuracy,
+                "final_precision": final_precision,
+                "final_recall": final_recall,
+                "final_f1": final_f1,
+            }
+        )
+        wandb.log(
+            {
+                "final_accuracy": final_accuracy,
+                "final_precision": final_precision,
+                "final_recall": final_recall,
+                "final_f1": final_f1,
+                "global_step": global_step,
+            }
+        )
         artifact = wandb.Artifact(
             name=hparams.artifact.name,
             type=hparams.artifact.type,
@@ -168,5 +250,11 @@ def train(cfg: DictConfig) -> None:
         run.log_artifact(artifact)
 
 
+@hydra.main(version_base=None, config_path="../../configs", config_name="default_config")
+def train(cfg: DictConfig) -> None:
+    _train_model(cfg)
+
+
 if __name__ == "__main__":
+    _ensure_repo_root_on_path()
     train()

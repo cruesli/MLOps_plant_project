@@ -184,3 +184,5 @@ data/
 wandb/models/model.pth
 models/model.pth
 wandb/
+outputs/
+/data

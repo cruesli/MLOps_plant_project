@@ -2,14 +2,14 @@
 
 MLOps project on plant image classification
 
-## Overall Goal of the Project: 
+## Overall Goal of the Project:
 
-The primary objective of this project is to develop a robust MLOps pipeline for automated plant disease detection using the PlantVillage dataset. As MLOps engineers at a start-up, our priority is not the absolute performance of the model, but the speed and reliability of the pipeline itself. 
+The primary objective of this project is to develop a robust MLOps pipeline for automated plant disease detection using the PlantVillage dataset. As MLOps engineers at a start-up, our priority is not the absolute performance of the model, but the speed and reliability of the pipeline itself.
 We aim to create a system where experiments are fully reproducible through structured configuration and experiment tracking. To achieve this, we will implement a baseline model and moving toward a tuned version. A part of our operational goal is to containerize our application using Docker to ensure that our training and environments are consistent across different machines, which is essential for a MLOps workflow.
 
 
 
-## Data: Source and Initial Scope: 
+## Data: Source and Initial Scope:
 
 **Dataset:** The PlantVillage dataset is not included in this repository. See [`Dataset.md`](Dataset.md) for download and setup instructions.
 
@@ -17,7 +17,7 @@ We will utilize the PlantVillage dataset from Kaggle, which contains thousands o
 
 
 
-## Models and Frameworks: 
+## Models and Frameworks:
 
 We will use PyTorch as our primary machine learning framework. To streamline development and optimize our code, we plan to use the following:
 
@@ -109,19 +109,29 @@ uv run src/plants/data.py
 ```
 
 **3. Train Model**
-Train the model. You can specify hyperparameters like learning rate and epochs:
+Train the model. You can run the default hyperparameters from the config files using the following:
 ```bash
-uv run src/plants/train.py --epochs 5 --batch-size 32 --lr 0.001
+uv run src/plants/train.py
+```
+
+Or you can specify what configuration you want to try from the configs directory:
+```bash
+uv run src/plants/train.py experiments=XXX dataloader=XXX model=XXX
 ```
 
 **4. Evaluate**
-Evaluate a trained model checkpoint:
+Evaluate the just trained model:
 ```bash
-uv run src/plants/evaluate.py models/model.pth
+uv run src/plants/evaluate.py
+```
+
+Or evaluate another model from configs:
+```bash
+uv run src/plants/evaluate.py models=XXX
 ```
 
 **5. Visualize**
-Generate data distribution plots and sample grids in `reports/figures/`:
+Visualize and generate data distribution plots and sample grids in `reports/figures/`:
 ```bash
 uv run src/plants/visualize.py
 ```
