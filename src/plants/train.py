@@ -56,6 +56,15 @@ def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested dire
             job_type="train",
         )
         wandb.define_metric("*", step_metric="global_step")
+        sweep_lr = run.config.get("lr")
+        sweep_batch = run.config.get("batch_size")
+        sweep_dropout = run.config.get("dropout")
+        if sweep_lr is not None:
+            hparams.lr = float(sweep_lr)
+        if sweep_batch is not None:
+            hparams.batch_size = int(sweep_batch)
+        if sweep_dropout is not None:
+            cfg.model.dropout = float(sweep_dropout)
 
     target = hparams.target
     dataset = MyDataset(data_dir, target=target)
