@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -32,6 +33,48 @@ def _select_device(preference: str) -> torch.device:
     return torch.device("cpu")
 
 
+def _normalize_gcs_prefix(prefix: str) -> str:
+    return prefix[5:] if prefix.startswith("gs://") else prefix
+
+
+def _maybe_download_processed_data(data_dir: Path, metadata_path: Path) -> None:
+    if metadata_path.exists():
+        return
+
+    gcs_prefix = os.environ.get("PLANTS_DATA_GCS")
+    if not gcs_prefix:
+        return
+
+    try:
+        from gcsfs import GCSFileSystem
+    except ImportError as exc:  # pragma: no cover - only needed in cloud jobs
+        raise RuntimeError("gcsfs is required to download data from GCS.") from exc
+
+    fs = GCSFileSystem()
+    remote_base = _normalize_gcs_prefix(gcs_prefix.rstrip("/"))
+    if fs.exists(f"{remote_base}/metadata.json"):
+        remote_prefix = remote_base
+    else:
+        remote_prefix = f"{remote_base}/processed"
+
+    local_processed = data_dir / "processed"
+    local_processed.mkdir(parents=True, exist_ok=True)
+
+    for remote_path in fs.ls(remote_prefix):
+        if remote_path.endswith("/"):
+            continue
+        filename = Path(remote_path).name
+        if not (filename.endswith(".pt") or filename.endswith(".json")):
+            continue
+        fs.get(remote_path, str(local_processed / filename))
+
+    if not metadata_path.exists():
+        raise FileNotFoundError(
+            f"Missing metadata at {metadata_path}. Set PLANTS_DATA_GCS to a GCS path "
+            "containing processed tensors and metadata.json."
+        )
+
+
 def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested directly
     from src.plants.data import MyDataset
     from src.plants.model import Model
@@ -45,6 +88,8 @@ def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested dire
     metadata_path = to_absolute_path(hparams.metadata_path)
     model_dir = Path(to_absolute_path(hparams.model_dir))
     model_dir.mkdir(parents=True, exist_ok=True)
+
+    _maybe_download_processed_data(Path(data_dir), Path(metadata_path))
 
     wandb_config = OmegaConf.to_container(cfg, resolve=True)
     run = None
