@@ -13,7 +13,15 @@ steps:
   id: 'Push container image'
   args: [
     'push',
-    'europe-west1-docker.pkg.dev/$PROJECT_ID/<registry-name>/<image-name>'
+    'europe-west1-docker.pkg.dev/$PROJECT_ID/mlops-plants/train'
+  ]
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Submit Vertex AI training job'
+  args: [
+    'ai', 'custom-jobs', 'create',
+    '--display-name=plant-disease-training',
+    '--region=europe-west1',
+    '--worker-pool-spec=machine-type=n1-standard-4,replica-count=1,container-image=europe-west1-docker.pkg.dev/$PROJECT_ID/mlops-plants/train'
   ]
 options:
   logging: CLOUD_LOGGING_ONLY
