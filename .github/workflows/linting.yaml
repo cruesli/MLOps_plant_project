@@ -36,4 +36,3 @@ jobs:
         continue-on-error: true
         run: |
           uv run ruff check .
-
