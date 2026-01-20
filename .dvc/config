@@ -1,0 +1,5 @@
+[core]
+    remote = gcsstore
+['remote "gcsstore"']
+    url = gs://mlops-plants/
+    version_aware = true
