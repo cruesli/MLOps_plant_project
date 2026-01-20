@@ -84,6 +84,10 @@ def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested dire
     else:
         raise ValueError(f"Unsupported target '{target}'. Expected one of ['class', 'disease', 'plant'] for training.")
     hparams.num_classes = num_classes
+    mean_val = metadata.get("mean")
+    std_val = metadata.get("std")
+    mean_tensor = torch.tensor(float(mean_val)) if mean_val is not None else None
+    std_tensor = torch.tensor(float(std_val)) if std_val is not None else None
 
     train_set, _ = dataset.load_plantvillage(target=target)
     data_channels = int(train_set.tensors[0].shape[1])
@@ -154,13 +158,13 @@ def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested dire
                 print(f"Epoch {epoch}, iter {i}, loss: {loss.item()}, accuracy: {accuracy}")
 
                 if run is not None:
-                    images = [
-                        wandb.Image(
-                            (single_img.detach().cpu().clamp(0, 1) * 255).to(torch.uint8),
-                            caption=f"Input {idx}",
-                        )
-                        for idx, single_img in enumerate(img[:5])
-                    ]
+                    images = []
+                    for idx, single_img in enumerate(img[:5]):
+                        image_cpu = single_img.detach().cpu()
+                        if mean_tensor is not None and std_tensor is not None:
+                            image_cpu = image_cpu * std_tensor + mean_tensor
+                        image_cpu = image_cpu.clamp(0, 1)
+                        images.append(wandb.Image((image_cpu * 255).to(torch.uint8), caption=f"Input {idx}"))
                     wandb.log({"input_images": images, "global_step": global_step})
 
                     grads = torch.cat([p.grad.flatten() for p in model.parameters() if p.grad is not None], 0)
