@@ -13,7 +13,7 @@ steps:
   id: 'Push container image'
   args: [
     'push',
-    'europe-west1-docker.pkg.dev/$PROJECT_ID/<registry-name>/<image-name>'
+    'europe-west1-docker.pkg.dev/$PROJECT_ID/mlops-plants/train'
   ]
 options:
   logging: CLOUD_LOGGING_ONLY
