@@ -1,137 +1,163 @@
 # plants
 
-MLOps project on plant image classification
+MLOps project for plant disease classification using the PlantVillage dataset.
 
-## Overall Goal of the Project:
+## Project overview
 
-The primary objective of this project is to develop a robust MLOps pipeline for automated plant disease detection using the PlantVillage dataset. As MLOps engineers at a start-up, our priority is not the absolute performance of the model, but the speed and reliability of the pipeline itself.
-We aim to create a system where experiments are fully reproducible through structured configuration and experiment tracking. To achieve this, we will implement a baseline model and moving toward a tuned version. A part of our operational goal is to containerize our application using Docker to ensure that our training and environments are consistent across different machines, which is essential for a MLOps workflow.
+This repository implements a reproducible training and deployment pipeline for plant disease classification. The focus is on operational reliability (configs, tracking, CI/CD, containerization) rather than maximizing model accuracy.
 
+Key components:
+- Training pipeline built around a custom CNN baseline in `src/plants/model.py`.
+- Hydra configuration for experiments and sweeps under `configs/`.
+- DVC-tracked data artifacts (`data.dvc`) with GCS storage via `dvc-gs`.
+- W&B logging for training runs.
+- FastAPI inference service in `src/plants/api.py`.
+- A legacy FastAPI control panel in `main.py` (not used by the deployed container).
+- Cloud Build configs for training/sweeps and API deployment in `cloudbuild/`.
 
+## Data
 
-## Data: Source and Initial Scope:
+The PlantVillage dataset is not included in the repo. See `Dataset.md` for instructions.
 
-**Dataset:** The PlantVillage dataset is not included in this repository. See [`Dataset.md`](Dataset.md) for download and setup instructions.
+A helper script downloads the dataset from Kaggle:
 
-We will utilize the PlantVillage dataset from Kaggle, which contains thousands of images of various plant leaves in both healthy and diseased states. To keep the project manageable and avoid complex data-loading issues, we will initially work with a subset of the data. We will develop a get_data.sh script to handle the initial downloading ensuring that our data pipeline is as automated as possible.
-
-
-
-## Models and Frameworks:
-
-We will use PyTorch as our primary machine learning framework. To streamline development and optimize our code, we plan to use the following:
-
-    ResNet-18: We will use this as our baseline model because it is a smaller, efficient architecture that allows for faster iteration.
-
-    Hydra: This will manage our configuration files and hyperparameters, allowing us to run multiple experiment variations easily.
-
-    Weights & Biases (W&B): We will use this to log our training progress, metrics, and model artifacts, ensuring that all team members can monitor the project's status in real-time.
-
-By focusing on these tools, we aim to move quickly through the design phase and focus on the long-term operations and reliability of the system.
-
-
-## Project structure
-
-The directory structure of the project looks like this:
-```txt
-├── .github/                  # Github actions and dependabot
-│   ├── dependabot.yaml
-│   └── workflows/
-│       └── tests.yaml
-├── configs/                  # Configuration files
-├── data/                     # Data directory
-│   ├── processed
-│   └── raw
-├── dockerfiles/              # Dockerfiles
-│   ├── api.Dockerfile
-│   └── train.Dockerfile
-├── docs/                     # Documentation
-│   ├── mkdocs.yml
-│   └── source/
-│       └── index.md
-├── models/                   # Trained models
-├── notebooks/                # Jupyter notebooks
-├── reports/                  # Reports
-│   └── figures/
-├── src/                      # Source code
-│   ├── plants/
-│   │   ├── __init__.py
-│   │   ├── api.py
-│   │   ├── data.py
-│   │   ├── evaluate.py
-│   │   ├── models.py
-│   │   ├── train.py
-│   │   └── visualize.py
-└── tests/                    # Tests
-│   ├── __init__.py
-│   ├── test_api.py
-│   ├── test_data.py
-│   └── test_model.py
-├── .gitignore
-├── .pre-commit-config.yaml
-├── LICENSE
-├── pyproject.toml            # Python project file
-├── README.md                 # Project README
-├── requirements.txt          # Project requirements
-├── requirements_dev.txt      # Development requirements
-└── tasks.py                  # Project tasks
-```
-
-
-Created using [mlops_template](https://github.com/SkafteNicki/mlops_template),
-a [cookiecutter template](https://github.com/cookiecutter/cookiecutter) for getting
-started with Machine Learning Operations (MLOps).
-
-## Getting Started
-
-### Installation
-
-1. **Clone the repository**
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-### Usage
-
-To run the project locally, you can use the provided scripts in `src/plants/`.
-
-**1. Download Data**
-The dataset is not included in the repo. Download it using the helper script (requires Kaggle API credentials):
 ```bash
 uv run ./scripts/get_data.sh
 ```
 
-**2. Preprocess Data**
-Process the raw images into tensors for training:
+This places data under `data/raw` and is then processed into tensors by `src/plants/data.py`.
+
+## Dependencies
+
+We use Python 3.13 and `uv` with dependencies defined in `pyproject.toml`:
+
+```bash
+uv sync --dev
+```
+
+If you prefer pip, a minimal runtime set is available in `requirements.txt`:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Local usage
+
+From the repo root:
+
+1) Preprocess data
 ```bash
 uv run src/plants/data.py
 ```
 
-**3. Train Model**
-Train the model. You can run the default hyperparameters from the config files using the following:
+2) Train
 ```bash
 uv run src/plants/train.py
 ```
 
-Or you can specify what configuration you want to try from the configs directory:
-```bash
-uv run src/plants/train.py experiments=XXX dataloader=XXX model=XXX
-```
-
-**4. Evaluate**
-Evaluate the just trained model:
+3) Evaluate
 ```bash
 uv run src/plants/evaluate.py
 ```
 
-Or evaluate another model from configs:
-```bash
-uv run src/plants/evaluate.py models=XXX
-```
-
-**5. Visualize**
-Visualize and generate data distribution plots and sample grids in `reports/figures/`:
+4) Visualize
 ```bash
 uv run src/plants/visualize.py
 ```
+
+5) Run the API locally
+```bash
+uv run src/plants/api.py
+```
+
+## Cloud workflows
+
+Cloud Build configuration files live in `cloudbuild/`:
+- `cloudbuild/cloudbuild.yaml` submits a Vertex AI training job.
+- `cloudbuild/cloudbuild.sweep.yaml` runs a sweep workflow.
+- `cloudbuild/cloudbuild.api.yaml` builds and deploys the API container to Cloud Run.
+
+Deployed app (Cloud Run):
+```txt
+https://plant-api-ulv62zswja-ew.a.run.app/
+```
+
+Dockerfiles are stored in `dockerfiles/`:
+- `dockerfiles/train.dockerfile`
+- `dockerfiles/api.dockerfile`
+
+## Project structure
+
+```txt
+├── .devcontainer/            # Devcontainer setup
+├── .dvc/                     # DVC metadata
+├── .github/                  # GitHub Actions and dependabot
+│   ├── dependabot.yaml
+│   └── workflows/
+│       ├── linting.yaml
+│       ├── pre-commit-update.yaml
+│       └── tests.yaml
+├── cloudbuild/               # Cloud Build configs
+│   ├── cloudbuild.api.yaml
+│   ├── cloudbuild.sweep.yaml
+│   └── cloudbuild.yaml
+├── configs/                  # Hydra configs
+│   ├── dataloader/
+│   ├── experiments/
+│   ├── model/
+│   ├── sweeps/
+│   └── default_config.yaml
+├── data/                     # Local data (raw/processed)
+├── dockerfiles/              # Dockerfiles
+│   ├── api.dockerfile
+│   └── train.dockerfile
+├── docs/                     # MkDocs site
+│   ├── mkdocs.yaml
+│   └── source/
+│       └── index.md
+├── models/                   # Saved model artifacts (local)
+├── notebooks/                # Exploration notebooks
+├── outputs/                  # Local run outputs
+├── reports/                  # Report template and figures
+│   ├── README.md
+│   ├── report.py
+│   └── figures/
+├── wandb/                    # W&B run artifacts (local)
+├── scripts/                  # Helper scripts
+│   ├── create_demo_samples.py
+│   ├── get_data.sh
+│   └── promote_best.py
+├── src/                      # Source code
+│   └── plants/
+│       ├── api.py
+│       ├── data.py
+│       ├── evaluate.py
+│       ├── model.py
+│       ├── train.py
+│       └── visualize.py
+├── tests/                    # Tests
+│   ├── integrationtests/
+│   ├── performancetests/
+│   ├── conftest.py
+│   └── test_*.py
+├── Dataset.md
+├── README.md
+├── data.dvc                
+├── pyproject.toml
+├── requirements.txt
+├── tasks.py
+└── uv.lock
+```
+
+## Docs
+
+MkDocs configuration lives in `docs/mkdocs.yaml`.
+
+```bash
+uv run mkdocs build --config-file docs/mkdocs.yaml --site-dir build
+uv run mkdocs serve --config-file docs/mkdocs.yaml
+```
+
+## Notes
+
+This repository was originally created with the `mlops_template` cookiecutter and has been extended with `uv`, DVC, Cloud Build, and Cloud Run deployment workflows.
