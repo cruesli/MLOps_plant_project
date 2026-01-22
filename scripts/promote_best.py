@@ -2,8 +2,8 @@
 import json
 import os
 import sys
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 
 import wandb
 

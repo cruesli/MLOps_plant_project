@@ -1,9 +1,11 @@
 import json
-from pathlib import Path
+
 import pytest
 import torch
 from torch.utils.data import Dataset, TensorDataset
+
 from src.plants.data import MyDataset
+
 
 def test_my_dataset(dummy_processed_data):
     """Test the MyDataset class."""
@@ -17,6 +19,7 @@ def test_my_dataset(dummy_processed_data):
     assert len(train_ds) == 10
     assert len(val_ds) == 5
 
+
 def test_dataset_getitem(dummy_processed_data):
     """Test the __getitem__ method of the MyDataset class."""
     dataset = MyDataset(dummy_processed_data, split="train", target="class")
@@ -25,6 +28,7 @@ def test_dataset_getitem(dummy_processed_data):
     assert isinstance(label, torch.Tensor)
     assert img.shape == (3, 28, 28)
     assert label.shape == ()
+
 
 def test_data_structure_and_amount(dummy_processed_data):
     """Test the structure and amount of the data."""
@@ -56,6 +60,7 @@ def test_data_structure_and_amount(dummy_processed_data):
     assert len(metadata["disease_to_idx"]) == 2
     assert len(metadata["plant_to_idx"]) == 3
 
+
 def test_dataset_initialization(dummy_processed_data):
     """Test the initialization of the MyDataset class."""
     # Test with different split and target values
@@ -69,6 +74,7 @@ def test_dataset_initialization(dummy_processed_data):
     with pytest.raises(ValueError):
         MyDataset(dummy_processed_data, split="train", target="invalid_target")
 
+
 def test_missing_data_file(dummy_processed_data):
     """Test that MyDataset raises an error if a data file is missing."""
     processed_dir = dummy_processed_data / "processed"
@@ -77,11 +83,12 @@ def test_missing_data_file(dummy_processed_data):
     with pytest.raises(FileNotFoundError):
         MyDataset(dummy_processed_data, split="train", target="class")
 
+
 def test_corrupted_data_file(dummy_processed_data):
     """Test that MyDataset raises an error if a data file is corrupted."""
     processed_dir = dummy_processed_data / "processed"
     with open(processed_dir / "train_labels.pt", "w") as f:
         f.write("this is not a tensor")
 
-    with pytest.raises(Exception): # torch.load can raise different errors
+    with pytest.raises(Exception):  # noqa: B017 - torch.load can raise different errors
         MyDataset(dummy_processed_data, split="train", target="class")

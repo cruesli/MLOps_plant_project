@@ -1,7 +1,7 @@
 import json
 import sys
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import torch
 import typer
@@ -12,6 +12,7 @@ from sklearn.metrics import accuracy_score, classification_report, f1_score, pre
 import wandb
 
 METADATA_PATH = Path("data/processed/metadata.json")
+
 
 def _ensure_repo_root_on_path() -> None:
     repo_root = Path(__file__).resolve().parents[2]
@@ -66,19 +67,19 @@ def _class_metadata(metadata: dict, target: str) -> tuple[int, list[str]]:
 
 def evaluate(
     model_checkpoint: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Argument(help="Path to model checkpoint (defaults to config experiments.model_dir/model.pth)."),
     ] = None,
     batch_size: Annotated[
-        Optional[int],
+        int | None,
         typer.Option("--batch-size", "-b", help="Override batch size from config."),
     ] = None,
     target: Annotated[
-        Optional[str],
+        str | None,
         typer.Option("--target", help="Override target from config."),
     ] = None,
     data_dir: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option("--data-dir", help="Override data directory from config."),
     ] = None,
     config_name: Annotated[str, typer.Option("--config-name", help="Hydra config name to load.")] = "default_config",
