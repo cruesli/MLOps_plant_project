@@ -1,0 +1,78 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build container image'
+  args: [
+    'build',
+    '.',
+    '-t',
+    'europe-west1-docker.pkg.dev/$PROJECT_ID/mlops-plants/train',
+    '-f',
+    './dockerfiles/train.dockerfile'
+  ]
+
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push container image'
+  args: [
+    'push',
+    'europe-west1-docker.pkg.dev/$PROJECT_ID/mlops-plants/train'
+  ]
+
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Submit Vertex AI sweep agent jobs'
+  entrypoint: 'bash'
+  secretEnv: ['WANDB_API_KEY']
+  env:
+  - 'WANDB_ENTITY=${_WANDB_ENTITY}'
+  - 'WANDB_PROJECT=${_WANDB_PROJECT}'
+  - 'WANDB_SWEEP_ID=${_WANDB_SWEEP_ID}'
+  - 'WANDB_AGENT_COUNT=${_WANDB_AGENT_COUNT}'
+  args:
+  - -c
+  - |
+      if [ -z "$$WANDB_SWEEP_ID" ]; then
+        echo "WANDB_SWEEP_ID is required. Provide it via _WANDB_SWEEP_ID."
+        exit 1
+      fi
+      COUNT="${WANDB_AGENT_COUNT:-1}"
+      for i in $(seq 1 "$$COUNT"); do
+        printf '%s\n' \
+          "workerPoolSpecs:" \
+          "- machineSpec:" \
+          "    machineType: n1-highmem-4" \
+          "  replicaCount: 1" \
+          "  containerSpec:" \
+          "    imageUri: europe-west1-docker.pkg.dev/$PROJECT_ID/mlops-plants/train" \
+          "    command:" \
+          "    - \"bash\"" \
+          "    - \"-lc\"" \
+          "    - \"uv run wandb agent $$WANDB_ENTITY/$$WANDB_PROJECT/$$WANDB_SWEEP_ID\"" \
+          "    env:" \
+          "    - name: WANDB_API_KEY" \
+          "      value: \"$$WANDB_API_KEY\"" \
+          "    - name: WANDB_ENTITY" \
+          "      value: \"$$WANDB_ENTITY\"" \
+          "    - name: WANDB_PROJECT" \
+          "      value: \"$$WANDB_PROJECT\"" \
+          "    - name: WANDB_SWEEP_ID" \
+          "      value: \"$$WANDB_SWEEP_ID\"" \
+          "    - name: PLANTS_DATA_GCS" \
+          "      value: \"gs://mlops-plants/data/processed\"" \
+          "    - name: PLANTS_MODEL_GCS" \
+          "      value: \"gs://mlops-plants/models\"" \
+          > /workspace/vertex_job.yaml
+        gcloud ai custom-jobs create --region=europe-west1 --display-name=plant-disease-sweep-agent-$i --config=/workspace/vertex_job.yaml
+      done
+
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/wandb_api_key/versions/latest
+    env: WANDB_API_KEY
+
+substitutions:
+  _WANDB_ENTITY: mlops_plant_group
+  _WANDB_PROJECT: plant-project
+  _WANDB_SWEEP_ID: ""
+  _WANDB_AGENT_COUNT: "1"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
