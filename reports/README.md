@@ -648,7 +648,11 @@ We built a web UI using FastAPI and deployed it as a container on Google Cloud R
 >
 > Answer:
 
---- question 29 fill here ---
+The diagram starts on the local machine. Here we define experiments with Hydra configuration files in configs/, which specify model, dataloader, and hyperparameters, and we preprocess data with data.py to create metadata.json and tensors. Those processed artifacts are then uploaded to GCS (for example gs://mlops-plants/data/processed) so cloud jobs can read them in a reproducible way. When we commit and push code to GitHub, GitHub Actions runs the automated checks (tests, linting) to validate the code.
+
+For cloud training, Cloud Build is triggered using cloudbuild.yaml (or cloudbuild.sweep.yaml for sweeps). It builds the training Docker image (train.dockerfile), pushes it to Artifact Registry, and launches a Vertex AI custom training job. The training container downloads processed data from GCS, trains the model, logs metrics and configs to Weights & Biases, and uploads checkpoints to GCS under gs://…/models/<run_id>/model.pth. For hyperparameter tuning, W&B sweeps run multiple agents on Vertex AI and produce several runs in parallel. After the sweep, promote_best.py reads W&B to identify the best run and copies that model to gs://…/models/best/model.pth, also writing metrics.json.
+
+For inference, Cloud Build uses cloudbuild.api.yaml to build the API image (api.dockerfile), push it to Artifact Registry, and deploy to Cloud Run. On startup, the FastAPI service (api.py) pulls the best model, metrics, and demo images from GCS. End users access the Cloud Run URL, click the inference button, and receive predictions plus the best‑run metrics.
 
 ### Question 30
 
