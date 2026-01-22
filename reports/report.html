@@ -137,7 +137,7 @@ how you managed dependencies, the structure of your code and how you managed cod
 <p>Answer:</p>
 </blockquote>
 <p>We used uv for managing our dependencies. The list of dependencies is defined in the pyproject.toml file, separating production and development packages.
-The uv.lock file is auto-generated and committed to version control, containing the exact versions of all dependencies and their sub-dependencies. This ensures that every team member and every build environment is perfectly reproducible and consistent.</p>
+The uv.lock file is auto-generated and committed to version control, containing the exact versions of all dependencies and their sub-dependencies. This ensures that every team member and every build environment is perfectly reproducible and consistent. We also pinned Python version via uv, documented setup steps in README, and verified sync on both macOS and Linux.</p>
 <p>To get a complete copy of our development environment, a new team member would have to install uv</p>
 <pre><code>curl -LsSf https://astral.sh/uv/install.sh | sh
 </code></pre>
@@ -154,9 +154,9 @@ The uv.lock file is auto-generated and committed to version control, containing 
 <em>experiments.</em></p>
 <p>Answer:</p>
 </blockquote>
-<p>We deviated a bit from a typical template by using <code>uv</code> (more modern approach) for dependency management, defining them in pyproject.toml and locking versions in uv.lock for reproducibility.
-We added dockerfiles for containerizing our training and API services, and integrated wandb for experiment tracking.
-Furthermore, we included a <code>.devcontainer</code> setup to standardize our development environment and established Continuous Integration workflows in <code>.github/workflows</code> for automated linting and testing.</p>
+<p>We deviated a bit from a typical template by using <code>uv</code> (more modern approach) for dependency management, defining them in pyproject.toml and locking versions in uv.lock for reproducibility. </p>
+<p>We added dockerfiles for containerizing our training and API services, and integrated wandb for experiment tracking. Furthermore, we established Continuous Integration workflows in <code>.github/workflows</code> for automated linting and testing. We added a <code>cloudbuild</code> folder for the cloudbuild related YAML files. We also added some more scripts in the <code>scripts</code> folder, to run to get demo examples for the API app and to extract the best performing model from GCS. 
+The core code lives under <code>src/plants</code> with modules for data handling, modeling, training, evaluation, visualization, and the FastAPI app. We kept <code>configs/</code> for Hydra defaults, experiments, and sweeps, and <code>outputs/</code> for generated runs. Data is tracked via DVC (<code>data.dvc</code> and <code>.dvc/</code>), and we retained <code>tests/</code>, <code>docs/</code>, and <code>reports/</code> for verification and reporting.</p>
 <h3>Question 6</h3>
 <blockquote>
 <p><strong>Did you implement any rules for code quality and format? What about typing and documentation? Additionally,</strong>
@@ -341,7 +341,7 @@ To reproduce a specific experiment, it is sufficient to rerun \texttt{train.py} 
 <em>using a custom container: ...</em></p>
 <p>Answer:</p>
 </blockquote>
-<p>Our training workloads run on Vertex AI, which allocates Compute Engine instances on demand. We configured our <code>cloudbuild.yaml</code> to use n1-highmem-4 machine types, pulling custom containers directly from Artifact Registry. While the infrastructure supports GPU acceleration (Tesla V100s), we opted for high-memory CPU instances for our current training requirements.</p>
+<p>Our training workloads run on Vertex AI, which provisions Compute Engine VMs for each custom training job. We trigger the job from <code>cloudbuild.yaml</code>, which builds a training container, pushes it to Artifact Registry, and then submits a Vertex AI custom job in region <code>europe-west1</code>. The job uses a single worker pool with <code>n1-highmem-4</code> machine type and runs our container image <code>mlops-plants/train</code>. We pass environment variables for W&amp;B and GCS locations (processed data and model output) so the job can read inputs and write artifacts without us managing disks manually. In practice, this means we interact with Compute Engine indirectly: Vertex AI creates the VM, runs the container, and tears it down when training finishes. This keeps the VM configuration consistent and reproducible without us having to administer instances directly.</p>
 <h3>Question 19</h3>
 <blockquote>
 <p><strong>Insert 1-2 images of your GCP bucket, such that we can see what data you have stored in it.</strong>
@@ -375,20 +375,7 @@ To reproduce a specific experiment, it is sufficient to rerun \texttt{train.py} 
 <em>was because ...</em></p>
 <p>Answer:</p>
 </blockquote>
-<p>We used Vertex AI Custom Training Jobs to automate hardware allocation, which saved us from having to configure and maintain our own VMs. The workflow is defined in <code>cloudbuild.yaml</code> and triggered via <code>gcloud builds submit</code> from the terminal.</p>
-<p>The automation handles:</p>
-<ul>
-<li>
-<p>Building a Docker container with all dependencies.</p>
-</li>
-<li>
-<p>Pushing the image to Artifact Registry.</p>
-</li>
-<li>
-<p>Submitting the job to Vertex AI</p>
-</li>
-</ul>
-<p>The training executes on n1-highmem-4 instances. To maintain security, we integrated Secret Manager to inject our <code>WANDB_API_KEY</code> at runtime, keeping credentials out of the source code while enabling real-time logging.</p>
+<p>We trained in the cloud using Vertex AI Custom Training Jobs. We trigger this via <code>gcloud builds submit</code>, which runs <code>cloudbuild.yaml</code>. Cloud Build builds the training image from <code>dockerfiles/train.dockerfile</code>, pushes it to Artifact Registry, writes a small <code>vertex_job.yaml</code>, and submits a job with <code>gcloud ai custom-jobs create</code> in <code>europe-west1</code>. The job uses a single worker pool with the <code>n1-highmem-4</code> Compute Engine machine type and runs our container image <code>mlops-plants/train</code>. We pass <code>PLANTS_DATA_GCS</code> and <code>PLANTS_MODEL_GCS</code> as environment variables so the container reads processed data and writes model checkpoints to GCS. For logging, <code>WANDB_API_KEY</code> is injected from Secret Manager (via <code>secretEnv</code>), keeping credentials out of the repo. Vertex AI provisions and tears down the VM for each run, so we do not manage instances directly.</p>
 <h2>Deployment</h2>
 <h3>Question 23</h3>
 <blockquote>
