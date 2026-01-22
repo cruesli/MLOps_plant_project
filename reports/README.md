@@ -361,7 +361,20 @@ To reproduce a specific experiment, it is sufficient to rerun \texttt{train.py} 
 >
 > Answer:
 
---- question 14 fill here ---
+The experiments are tracked using W&B and mainly focus on understanding training dynamics, model performance, and the effect of hyperparameters through a sweep.
+
+In the first screenshot, We track training loss, epoch-wise loss, and training accuracy over global steps. These metrics are essential for diagnosing optimization behavior. The training loss curves show how quickly and how stably the model converges, while the epoch loss provides a smoothed, high-level view that makes it easier to compare different runs. Training accuracy complements loss by indicating whether improvements in loss actually translate into better predictions. Monitoring both is important since loss alone can decrease without meaningful gains in accuracy.
+
+![my_image](figures/wandb1.png)
+
+The second screenshot focuses on final evaluation metrics, including final accuracy, precision, recall, and F1-score. These metrics are critical because they summarize model performance after training and capture different aspects of classification quality. Precision and recall are especially important when class imbalance is present, while the F1-score balances the two and serves as a robust single-number metric for comparison across runs. Final accuracy is tracked for interpretability and consistency with training metrics.
+
+![my_image](figures/wandb2.png)
+
+The third screenshot highlights hyperparameter sweeps and analysis. We log learning rate, batch size, and dropout, and visualize their relationship to final accuracy using parameter importance plots and parallel coordinates. This allows us to identify which hyperparameters have the strongest influence on performance and detect interactions between them. Additionally, logging example input images ensures data consistency across runs and helps verify that the model is trained on correctly preprocessed inputs.
+
+![my_image](figures/wandb3.png)
+
 
 ### Question 15
 
@@ -442,7 +455,9 @@ Our training workloads run on Vertex AI, which allocates Compute Engine instance
 >
 > Answer:
 
---- question 19 fill here ---
+![my_image](figures/GCP_bucket.png)
+
+![my_image](figures/GCP_bucket2.png)
 
 ### Question 20
 
@@ -451,7 +466,9 @@ Our training workloads run on Vertex AI, which allocates Compute Engine instance
 >
 > Answer:
 
---- question 20 fill here ---
+![my_image](figures/Artifact_registry.png)
+
+![my_image](figures/Artifact_registry2.png)
 
 ### Question 21
 
@@ -460,7 +477,7 @@ Our training workloads run on Vertex AI, which allocates Compute Engine instance
 >
 > Answer:
 
---- question 21 fill here ---
+![my_image](figures/Build_history.png)
 
 ### Question 22
 
