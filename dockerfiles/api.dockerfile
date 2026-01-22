@@ -17,5 +17,5 @@ RUN uv sync --frozen --no-install-project
 # 5. Copy the rest of the project
 COPY . .
 
-# 6. Run the FastAPI inference app
-ENTRYPOINT ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
+# 6. Run the FastAPI inference app (src/plants/api.py)
+ENTRYPOINT ["uv", "run", "uvicorn", "src.plants.api:app", "--host", "0.0.0.0", "--port", "8080"]
