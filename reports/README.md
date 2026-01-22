@@ -585,7 +585,7 @@ Regarding the experience, working in the cloud is difficult to start with. It is
 >
 > Answer:
 
-We implemented a FastAPI frontend to make our model accessible via a web interface. You can access it here: https://plant-api-ulv62zswja-ew.a.run.app/ 
+We implemented a FastAPI frontend to make our model accessible via a web interface. You can access it here: https://plant-api-ulv62zswja-ew.a.run.app/
 
 We built a web UI using FastAPI and deployed it as a container on Google Cloud Run. This frontend acts as a user-friendly layer that sits on top of our model's API. We wanted to make the model easy for anyone to use and to demonstrate a complete end-to-end MLOps pipeline, from data storage to a live, interactive web application.
 
@@ -619,13 +619,13 @@ We built a web UI using FastAPI and deployed it as a container on Google Cloud R
 > Answer:
 
 There were a lot of different minor struggles within the project, making sure everything
-coherently interacted with each other, while making sure we were getting the results we 
+coherently interacted with each other, while making sure we were getting the results we
 wanted.
 When we tried to implement new stuff we always had to make sure these new things aligned
 with what our pipeline already did. So e.g. when we implemented unit tests and then updated
-the model we were using, we could easily create misalignments. 
+the model we were using, we could easily create misalignments.
 Minor things were also prevalent, like the usual merge conflicts or unit tests that didn't go through pull requests and so forth.
-The largest struggles probably came from setting up the cloud, figuring out where everything 
+The largest struggles probably came from setting up the cloud, figuring out where everything
 was, or what we were missing when trying to run on the gpu's. Also setting up deployment posed a large challenge.
 
 
