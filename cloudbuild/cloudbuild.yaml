@@ -36,6 +36,8 @@ steps:
             value: "$$WANDB_API_KEY"
           - name: PLANTS_DATA_GCS
             value: "gs://mlops-plants/data/processed"
+          - name: PLANTS_MODEL_GCS
+            value: "gs://mlops-plants/models"
       EOF
       gcloud ai custom-jobs create --region=europe-west1 --display-name=plant-disease-training --config=/workspace/vertex_job.yaml
 

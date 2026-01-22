@@ -37,6 +37,22 @@ def _normalize_gcs_prefix(prefix: str) -> str:
     return prefix[5:] if prefix.startswith("gs://") else prefix
 
 
+def _maybe_upload_model(model_path: Path, run_id: str) -> None:
+    gcs_prefix = os.environ.get("PLANTS_MODEL_GCS")
+    if not gcs_prefix:
+        return
+
+    try:
+        from gcsfs import GCSFileSystem
+    except ImportError as exc:  # pragma: no cover - only needed in cloud jobs
+        raise RuntimeError("gcsfs is required to upload models to GCS.") from exc
+
+    fs = GCSFileSystem()
+    remote_base = _normalize_gcs_prefix(gcs_prefix.rstrip("/"))
+    remote_path = f"{remote_base}/{run_id}/{model_path.name}"
+    fs.put(str(model_path), remote_path)
+
+
 def _maybe_download_processed_data(data_dir: Path, metadata_path: Path) -> None:
     if metadata_path.exists():
         return
@@ -306,6 +322,9 @@ def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested dire
         )
         artifact.add_file(str(model_path))
         run.log_artifact(artifact)
+        _maybe_upload_model(model_path, run.id)
+    else:
+        _maybe_upload_model(model_path, "local")
 
 
 @hydra.main(version_base=None, config_path="../../configs", config_name="default_config")

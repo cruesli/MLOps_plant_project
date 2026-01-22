@@ -1,0 +1,41 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build API image'
+  args: [
+    'build',
+    '.',
+    '-t',
+    'europe-west1-docker.pkg.dev/$PROJECT_ID/mlops-plants/api',
+    '-f',
+    './dockerfiles/api.dockerfile'
+  ]
+
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push API image'
+  args: [
+    'push',
+    'europe-west1-docker.pkg.dev/$PROJECT_ID/mlops-plants/api'
+  ]
+
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Deploy Cloud Run API'
+  args:
+  - 'run'
+  - 'deploy'
+  - 'plant-api'
+  - '--image'
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/mlops-plants/api'
+  - '--region'
+  - 'europe-west1'
+  - '--platform'
+  - 'managed'
+  - '--allow-unauthenticated'
+  - '--port'
+  - '8080'
+  - '--memory'
+  - '1Gi'
+  - '--set-env-vars'
+  - 'PLANTS_MODEL_GCS=gs://mlops-plants/models,PLANTS_DATA_GCS=gs://mlops-plants/data/processed,PLANTS_MODEL_TAG=best,PLANTS_DEMO_GCS=gs://mlops-plants/demo,PLANTS_TARGET=class'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
