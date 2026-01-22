@@ -192,7 +192,7 @@ And then sync:
 > Answer:
 
 We deviated a bit from a typical template by using `uv` (more modern approach) for dependency management, defining them in pyproject.toml and locking versions in uv.lock for reproducibility.
-We added dockerfiles for containerizing our training and API services, and integrated wandb for experiment tracking. 
+We added dockerfiles for containerizing our training and API services, and integrated wandb for experiment tracking.
 Furthermore, we included a `.devcontainer` setup to standardize our development environment and established Continuous Integration workflows in `.github/workflows` for automated linting and testing.
 
 ### Question 6
@@ -216,7 +216,7 @@ For typing, we used Python's type hints throughout the repo to specify the expec
 
 These concepts are critical in projects:
    * Maintainability: Consistent formatting and quality rules (ruff enforcing PEP8) make the code easier to read and maintain for any team member, at any time.
-   * Reliability: Typing helps catch a whole class of bugs before the code is even run, which is crucial for preventing unexpected errors in production.     
+   * Reliability: Typing helps catch a whole class of bugs before the code is even run, which is crucial for preventing unexpected errors in production.
    * Collaboration: Clear documentation ensures that all team members, new and old, can understand how different parts of the project work and how to use them correctly, which greatly improves efficiency and reduces onboarding time.
 
 ## Version control
@@ -266,7 +266,7 @@ Our total code coverage is 48%, which includes all our source code. This is far 
 >
 > Answer:
 
-Yes we used git and github for version control. For each feature we were developing we created a new branch, which were then merged upon completion of the feature. To merge a branch into main we used pull requests which checked if the following requirements were fulfilled: The branch has to be up to date with main, and all our unit tests needed to be passed on macos, windows and ubuntu for python 3.13. Pull requests were set up using github’s rulesets. This was done to make sure that the current version is always working, and limit the possibility of bad code being pushed to main. 
+Yes we used git and github for version control. For each feature we were developing we created a new branch, which were then merged upon completion of the feature. To merge a branch into main we used pull requests which checked if the following requirements were fulfilled: The branch has to be up to date with main, and all our unit tests needed to be passed on macos, windows and ubuntu for python 3.13. Pull requests were set up using github’s rulesets. This was done to make sure that the current version is always working, and limit the possibility of bad code being pushed to main.
 
 ### Question 10
 
@@ -317,9 +317,9 @@ We did make use of DVC when storing data on the cloud. However we did not really
 >
 > Answer:
 
-Experiments are configured with Hydra/OmegaConf YAML files in \texttt{configs/}. \texttt{default\_config.yaml} composes the \texttt{experiments}, \texttt{dataloader}, and \texttt{model} groups, and files like \texttt{plant.yaml} define hyperparameters (\texttt{lr}, \texttt{batch\_size}, \texttt{epochs}) and W\&B settings. The training entrypoint \texttt{train.py} uses \texttt{hydra.main(...)}. Run defaults with \texttt{train.py}, or override config values: 
-\begin{verbatim} 
-train.py experiments=plant dataloader=default model=default \ experiments.lr=1e-3 experiments.batch_size=64 
+Experiments are configured with Hydra/OmegaConf YAML files in \texttt{configs/}. \texttt{default\_config.yaml} composes the \texttt{experiments}, \texttt{dataloader}, and \texttt{model} groups, and files like \texttt{plant.yaml} define hyperparameters (\texttt{lr}, \texttt{batch\_size}, \texttt{epochs}) and W\&B settings. The training entrypoint \texttt{train.py} uses \texttt{hydra.main(...)}. Run defaults with \texttt{train.py}, or override config values:
+\begin{verbatim}
+train.py experiments=plant dataloader=default model=default \ experiments.lr=1e-3 experiments.batch_size=64
 \end{verbatim}
 
 
