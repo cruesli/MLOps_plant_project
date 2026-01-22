@@ -46,13 +46,14 @@ def _ensure_dummy_processed_data() -> None:
     (processed_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
 
 
-def get_model_state_dict(model_path, num_classes):
-    """Load and return the state dict of a model."""
-    # Assuming these model parameters for the dummy data setup in test_data.py
-    # num_classes is passed from the test, in_channels is hardcoded for the dummy data.
+def get_model_state_dict(model_path, num_classes: int | None = None) -> dict:
+    """Load and return the state dict of a model, deriving shapes from the checkpoint."""
+    state_dict = torch.load(model_path, map_location=torch.device("cpu"))
+    inferred_num_classes = state_dict["fc.weight"].shape[0]
+    inferred_in_channels = state_dict["layer1.0.weight"].shape[1]
     model = Model(
-        num_classes=num_classes,
-        in_channels=3,
+        num_classes=num_classes or inferred_num_classes,
+        in_channels=inferred_in_channels,
         conv1_out=32,
         conv1_kernel=3,
         conv1_stride=1,
@@ -62,7 +63,7 @@ def get_model_state_dict(model_path, num_classes):
         conv2_padding=1,
         dropout=0.2,
     )
-    model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
+    model.load_state_dict(state_dict)
     return model.state_dict()
 
 
@@ -114,14 +115,12 @@ def test_reproducibility(tmp_path):
 
     # First run
     _train_model(cfg)  # Calls the patched train function
-    # num_classes from dummy data in test_data.py (5 for "class")
-    state_dict_1 = get_model_state_dict(model_path, num_classes=5)
+    state_dict_1 = get_model_state_dict(model_path)
     os.remove(model_path)
 
     # Second run
     _train_model(cfg)  # Calls the patched train function again
-    # num_classes from dummy data in test_data.py (5 for "class")
-    state_dict_2 = get_model_state_dict(model_path, num_classes=5)
+    state_dict_2 = get_model_state_dict(model_path)
 
     # Check that the model weights are the same
     for key in state_dict_1:
