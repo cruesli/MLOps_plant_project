@@ -52,48 +52,48 @@ will check the repositories and the code to verify your answers.
 
 ### Week 1
 
-* [ ] Create a git repository (M5)
-* [ ] Make sure that all team members have write access to the GitHub repository (M5)
-* [ ] Create a dedicated environment for you project to keep track of your packages (M2)
-* [ ] Create the initial file structure using cookiecutter with an appropriate template (M6)
+* [x] Create a git repository (M5)
+* [x] Make sure that all team members have write access to the GitHub repository (M5)
+* [x] Create a dedicated environment for you project to keep track of your packages (M2)
+* [x] Create the initial file structure using cookiecutter with an appropriate template (M6)
 * [ ] Fill out the `data.py` file such that it downloads whatever data you need and preprocesses it (if necessary) (M6)
-* [ ] Add a model to `model.py` and a training procedure to `train.py` and get that running (M6)
-* [ ] Remember to either fill out the `requirements.txt`/`requirements_dev.txt` files or keeping your
+* [x] Add a model to `model.py` and a training procedure to `train.py` and get that running (M6)
+* [x] Remember to either fill out the `requirements.txt`/`requirements_dev.txt` files or keeping your
     `pyproject.toml`/`uv.lock` up-to-date with whatever dependencies that you are using (M2+M6)
 * [ ] Remember to comply with good coding practices (`pep8`) while doing the project (M7)
 * [ ] Do a bit of code typing and remember to document essential parts of your code (M7)
-* [ ] Setup version control for your data or part of your data (M8)
-* [ ] Add command line interfaces and project commands to your code where it makes sense (M9)
-* [ ] Construct one or multiple docker files for your code (M10)
-* [ ] Build the docker files locally and make sure they work as intended (M10)
-* [ ] Write one or multiple configurations files for your experiments (M11)
-* [ ] Used Hydra to load the configurations and manage your hyperparameters (M11)
+* [x] Setup version control for your data or part of your data (M8)
+* [x] Add command line interfaces and project commands to your code where it makes sense (M9)
+* [x] Construct one or multiple docker files for your code (M10)
+* [x] Build the docker files locally and make sure they work as intended (M10)
+* [x] Write one or multiple configurations files for your experiments (M11)
+* [x] Used Hydra to load the configurations and manage your hyperparameters (M11)
 * [ ] Use profiling to optimize your code (M12)
-* [ ] Use logging to log important events in your code (M14)
-* [ ] Use Weights & Biases to log training progress and other important metrics/artifacts in your code (M14)
-* [ ] Consider running a hyperparameter optimization sweep (M14)
+* [x] Use logging to log important events in your code (M14)
+* [x] Use Weights & Biases to log training progress and other important metrics/artifacts in your code (M14)
+* [x] Consider running a hyperparameter optimization sweep (M14)
 * [ ] Use PyTorch-lightning (if applicable) to reduce the amount of boilerplate in your code (M15)
 
 ### Week 2
 
-* [ ] Write unit tests related to the data part of your code (M16)
-* [ ] Write unit tests related to model construction and or model training (M16)
-* [ ] Calculate the code coverage (M16)
-* [ ] Get some continuous integration running on the GitHub repository (M17)
-* [ ] Add caching and multi-os/python/pytorch testing to your continuous integration (M17)
-* [ ] Add a linting step to your continuous integration (M17)
-* [ ] Add pre-commit hooks to your version control setup (M18)
+* [x] Write unit tests related to the data part of your code (M16)
+* [x] Write unit tests related to model construction and or model training (M16)
+* [x] Calculate the code coverage (M16)
+* [x] Get some continuous integration running on the GitHub repository (M17)
+* [x] Add caching and multi-os/python/pytorch testing to your continuous integration (M17)
+* [x] Add a linting step to your continuous integration (M17)
+* [x] Add pre-commit hooks to your version control setup (M18)
 * [ ] Add a continues workflow that triggers when data changes (M19)
 * [ ] Add a continues workflow that triggers when changes to the model registry is made (M19)
-* [ ] Create a data storage in GCP Bucket for your data and link this with your data version control setup (M21)
-* [ ] Create a trigger workflow for automatically building your docker images (M21)
-* [ ] Get your model training in GCP using either the Engine or Vertex AI (M21)
-* [ ] Create a FastAPI application that can do inference using your model (M22)
-* [ ] Deploy your model in GCP using either Functions or Run as the backend (M23)
+* [x] Create a data storage in GCP Bucket for your data and link this with your data version control setup (M21)
+* [x] Create a trigger workflow for automatically building your docker images (M21)
+* [x] Get your model training in GCP using either the Engine or Vertex AI (M21)
+* [x] Create a FastAPI application that can do inference using your model (M22)
+* [x] Deploy your model in GCP using either Functions or Run as the backend (M23)
 * [ ] Write API tests for your application and setup continues integration for these (M24)
 * [ ] Load test your application (M24)
 * [ ] Create a more specialized ML-deployment API using either ONNX or BentoML, or both (M25)
-* [ ] Create a frontend for your API (M26)
+* [x] Create a frontend for your API (M26)
 
 ### Week 3
 
@@ -113,8 +113,8 @@ will check the repositories and the code to verify your answers.
 * [ ] Publish the documentation to GitHub Pages (M32)
 * [ ] Revisit your initial project description. Did the project turn out as you wanted?
 * [ ] Create an architectural diagram over your MLOps pipeline
-* [ ] Make sure all group members have an understanding about all parts of the project
-* [ ] Uploaded all your code to GitHub
+* [x] Make sure all group members have an understanding about all parts of the project
+* [x] Uploaded all your code to GitHub
 
 ## Group information
 
@@ -519,7 +519,18 @@ The training executes on n1-highmem-4 instances. To maintain security, we integr
 >
 > Answer:
 
---- question 23 fill here ---
+Yes, we did manage to write an API for our model. We used FastAPI to create a robust and efficient web service.
+
+The API is defined in src/plants/api.py. At startup, it loads the best-performing model and its associated metadata directly from Google Cloud Storage (GCS), with paths configured via environment variables. This decouples the model from the application code, making updates easy.
+
+We implemented several endpoints:
+
+* /predict: This endpoint accepts an image upload, preprocesses it, and returns the top predictions and their probabilities as a JSON response.
+* /predict-random: A special endpoint for demonstration purposes. It randomly selects a pre-loaded sample image and returns its prediction, which can be viewed through the integrated HTML frontend.
+* /refresh: Another special feature which allows us to trigger a hot-reload of the model from GCS without restarting the API service.
+
+The API is containerized using the dockerfiles/api.dockerfile, which uses uvicorn to serve the application, making it easy to deploy and scale.
+
 
 ### Question 24
 
@@ -535,7 +546,16 @@ The training executes on n1-highmem-4 instances. To maintain security, we integr
 >
 > Answer:
 
---- question 24 fill here ---
+Yes, we deployed the API to the cloud. We used a continuous deployment pipeline defined in cloudbuild/cloudbuild.api.yaml that integrates with Google Cloud Build.
+
+The process is triggered when changes are pushed to our repository. Cloud Build follows these steps:
+
+1. Builds a Docker container from our dockerfiles/api.dockerfile.
+2. Pushes the container image to Google Artifact Registry.
+3. Deploys the image to Google Cloud Run, a serverless platform. The service is named plant-api and is configured to be publicly accessible and to use the correct environment variables to load the production model from GCS.
+
+You can invoke the deployed service by visiting its public URL, which provides a simple web interface for predictions: https://plant-api-ulv62zswja-ew.a.run.app/ 
+
 
 ### Question 25
 
@@ -550,7 +570,7 @@ The training executes on n1-highmem-4 instances. To maintain security, we integr
 >
 > Answer:
 
---- question 25 fill here ---
+For unit testing we did verification of the HTML index, random prediction payload (using demo images), and demo image serving. We did not do load testing, but to do this we would have used locust and created a locustfile that defined some users. Then we would run the file and define the number of users (i.e 10) and how fast the number of users should ramp up (i.e. 1/s) and then start the load testing. From this we could have seen how many users/requests per second the api can handle, as well as different percentiles for response times. This would give us a good indication of how snappy the api would feel for users.
 
 ### Question 26
 
@@ -565,7 +585,14 @@ The training executes on n1-highmem-4 instances. To maintain security, we integr
 >
 > Answer:
 
---- question 26 fill here ---
+We did not employ monitoring for our deployed model. However, implementing a monitoring solution would be critical for the long-term success and reliability of the application. Over time, we would want to measure several key aspects:
+
+* Operational Metrics: This includes tracking the API's request latency, error rates, and resource utilization (CPU/memory). Monitoring these would immediately alert us to performance bottlenecks, crashes, or scaling issues, ensuring a good user experience and efficient resource use.
+
+* Data Drift: We would monitor the statistical distributions of the input images sent for prediction. If these distributions start to differ significantly from the data the model was trained on (e.g., different lighting conditions, new types of plants), it indicates data drift. This is a crucial signal that the model's performance may be degrading because it is encountering data it has never seen before.
+
+* Concept Drift: By collecting ground-truth labels for a sample of predictions, we could track the model's real-world accuracy over time. A decline in accuracy would signal "concept drift," meaning the relationship between the input data and the true labels has changed, and the model needs to be retrained on new data to maintain its effectiveness.
+
 
 ## Overall discussion of project
 
@@ -621,7 +648,11 @@ We built a web UI using FastAPI and deployed it as a container on Google Cloud R
 >
 > Answer:
 
---- question 29 fill here ---
+The diagram starts on the local machine. Here we define experiments with Hydra configuration files in configs/, which specify model, dataloader, and hyperparameters, and we preprocess data with data.py to create metadata.json and tensors. Those processed artifacts are then uploaded to GCS (for example gs://mlops-plants/data/processed) so cloud jobs can read them in a reproducible way. When we commit and push code to GitHub, GitHub Actions runs the automated checks (tests, linting) to validate the code.
+
+For cloud training, Cloud Build is triggered using cloudbuild.yaml (or cloudbuild.sweep.yaml for sweeps). It builds the training Docker image (train.dockerfile), pushes it to Artifact Registry, and launches a Vertex AI custom training job. The training container downloads processed data from GCS, trains the model, logs metrics and configs to Weights & Biases, and uploads checkpoints to GCS under gs://…/models/<run_id>/model.pth. For hyperparameter tuning, W&B sweeps run multiple agents on Vertex AI and produce several runs in parallel. After the sweep, promote_best.py reads W&B to identify the best run and copies that model to gs://…/models/best/model.pth, also writing metrics.json.
+
+For inference, Cloud Build uses cloudbuild.api.yaml to build the API image (api.dockerfile), push it to Artifact Registry, and deploy to Cloud Run. On startup, the FastAPI service (api.py) pulls the best model, metrics, and demo images from GCS. End users access the Cloud Run URL, click the inference button, and receive predictions plus the best‑run metrics.
 
 ### Question 30
 
