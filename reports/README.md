@@ -236,7 +236,7 @@ These concepts are critical in projects:
 >
 > Answer:
 
---- question 7 fill here ---
+There are 12 test functions across 6 test files. They cover: MyDataset creation, indexing, saved tensor shapes/metadata, valid/invalid targets, and missing/corrupt files; end-to-end evaluate() on fixture data with a dummy checkpoint; model init and forward output shape; slow get_data.sh download/extract to non-empty data/raw; _train_model reproducibility (two runs yield identical weights); and end-to-end visualize() that produces an embeddings figure.
 
 ### Question 8
 
@@ -298,7 +298,11 @@ We did make use of DVC when storing data on the cloud. However we did not really
 >
 > Answer:
 
---- question 11 fill here ---
+Our continuous integration is organized into three GitHub Actions workflows: unit testing, linting/formatting, and automated pre-commit hook updates. The unit test workflow (‘Unit Tests’) runs on every push and pull request to ‘main’. It executes ‘pytest’ with coverage enabled across a full matrix of operating systems ‘ubuntu-latest, windows-latest, and macos-latest’ using ‘Python 3.13’. This matrix coverage gives us early signals about cross-platform issues, while the coverage report highlights any untested code paths.
+The linting workflow (‘Code linting’) also triggers on push and pull request to ‘main’. It installs dependencies with ‘uv’, then runs ‘ruff format’ followed by ‘ruff check’ on’ ubuntu-latest’ with ‘Python 3.13’. These steps surface formatting and style problems early; they are currently marked ‘continue-on-error’, so contributors still get feedback even if lint warnings appear, without blocking the pipeline.
+A scheduled ‘Pre-commit auto-update’ workflow runs weekly (and can be triggered manually) to refresh our pre-commit hook versions and open a pull request with the updates. This keeps tooling current without manual maintenance.
+All workflows use ‘astral-sh/setup-uv@v7’ with ‘enable-cache: true’, letting ‘uv’ leverage GitHub Actions caching to speed dependency installation across runs. Combined with branch protection rules, test and lint results must be green before merging to ‘main’, helping keep the main branch stable, dependencies up to date, and code style consistent with PEP 8 guidelines.
+
 
 ## Running code and tracking experiments
 
@@ -372,7 +376,17 @@ To reproduce a specific experiment, it is sufficient to rerun \texttt{train.py} 
 >
 > Answer:
 
---- question 15 fill here ---
+For this project, we have created two Docker images: one for training the model and one for serving the model via an API.
+
+The training image is defined in `dockerfiles/train.dockerfile`. It contains all the necessary dependencies to run the training script. You can build and run the training container like this:
+- `docker build -f dockerfiles/train.dockerfile -t plant-trainer .`
+- `docker run plant-trainer`
+
+The API image is defined in `dockerfiles/api.dockerfile`. It sets up a FastAPI server to provide predictions from a trained model. To run the API server:
+
+- `docker build -f dockerfiles/api.dockerfile -t plant-api .`
+- `docker run -p 80:80 plant-api`
+
 
 ### Question 16
 
@@ -387,7 +401,7 @@ To reproduce a specific experiment, it is sufficient to rerun \texttt{train.py} 
 >
 > Answer:
 
---- question 16 fill here ---
+Debugging was done using our unit tests and then mainly by passing the errors to an AI-assistant like Codex. Using this and our own critical thinking we were able to swiftly debug the errors and get to the root of the problem. This has been very helpful when running into problems in the command line as well, which we are less proficient in compared to coding. We did run a profile on our code, but the output was bad and we did not end up spending any more time on it afterwards. This might have been needed in hindsight as training our model takes longer than expected.
 
 ## Working in the cloud
 
@@ -404,11 +418,7 @@ To reproduce a specific experiment, it is sufficient to rerun \texttt{train.py} 
 >
 > Answer:
 
-We used different GCP services to automate our MLOps pipeline:
-- Data & Storage: GCS serves as our remote storage, integrated with DVC for data versioning.
-- Automation (CI/CD): Cloud Build handles the full lifecycle—building Docker images, pushing them to Artifact Registry, and triggering training.
-- Compute: Vertex AI runs our training jobs on scalable, managed infrastructure.
-- Security: Secret Manager securely handles our `WANDB_API_KEY`, injecting it during the build process to avoid hardcoding credentials.
+We used the following services: Engine, Bucket and Artifact Registry. The Engine is used for running code like train.py and evaluate.py remotely . Bucket is used for cloud data storage which we manage using DVC. Artifact Registry is used for storing our docker images which are updated on push to main. Secret Manager securely handles our `WANDB_API_KEY`, injecting it during the build process to avoid hardcoding credentials.
 
 ### Question 18
 
@@ -423,7 +433,7 @@ We used different GCP services to automate our MLOps pipeline:
 >
 > Answer:
 
-Our training workloads run on Vertex AI, which provisions Compute Engine instances on demand. We configured our `cloudbuild.yaml` to use n1-highmem-4 machine types, pulling custom containers directly from Artifact Registry. While the infrastructure supports GPU acceleration (Tesla V100s), we opted for high-memory CPU instances for our current training requirements.
+Our training workloads run on Vertex AI, which allocates Compute Engine instances on demand. We configured our `cloudbuild.yaml` to use n1-highmem-4 machine types, pulling custom containers directly from Artifact Registry. While the infrastructure supports GPU acceleration (Tesla V100s), we opted for high-memory CPU instances for our current training requirements.
 
 ### Question 19
 
@@ -575,7 +585,7 @@ Regarding the experience, working in the cloud is difficult to start with. It is
 >
 > Answer:
 
-We implemented a FastAPI frontend to make our model accessible via a web interface. You can access it here: https://plant-api-539907214676.europe-west1.run.app/
+We implemented a FastAPI frontend to make our model accessible via a web interface. You can access it here: https://plant-api-ulv62zswja-ew.a.run.app/
 
 We built a web UI using FastAPI and deployed it as a container on Google Cloud Run. This frontend acts as a user-friendly layer that sits on top of our model's API. We wanted to make the model easy for anyone to use and to demonstrate a complete end-to-end MLOps pipeline, from data storage to a live, interactive web application.
 
@@ -608,7 +618,20 @@ We built a web UI using FastAPI and deployed it as a container on Google Cloud R
 >
 > Answer:
 
---- question 30 fill here ---
+There were a lot of different minor struggles within the project, making sure everything
+coherently interacted with each other, while making sure we were getting the results we
+wanted.
+When we tried to implement new stuff we always had to make sure these new things aligned
+with what our pipeline already did. So e.g. when we implemented unit tests and then updated
+the model we were using, we could easily create misalignments.
+Minor things were also prevalent, like the usual merge conflicts or unit tests that didn't go through pull requests and so forth.
+The largest struggles probably came from setting up the cloud, figuring out where everything
+was, or what we were missing when trying to run on the gpu's. Also setting up deployment posed a large challenge.
+
+
+To overcome these challenges we utilized generative LLM's like Gemini and GPT5.2 to get an understanding of what were wrong, mostly in figuring out the inner workings of cloud operations in gcloud. This helped us debug and pinpoint to what were wrong and what we should do to ensure smooth operation throughout our MLOps pipeline.
+
+However no collaborative struggles were present, we felt like working in git provided a great overview of the project structure and individual tasks.
 
 ### Question 31
 
@@ -626,4 +649,7 @@ We built a web UI using FastAPI and deployed it as a container on Google Cloud R
 > *We have used ChatGPT to help debug our code. Additionally, we used GitHub Copilot to help write some of our code.*
 > Answer:
 
---- question 31 fill here ---
+Student s224188 and s224174 was mostly in charge of setting up the initial cookie cutter project and cloud setup.
+Student s224186 was mostly in charge of deployment. Otherwise all other contributions has been made interchangeably between all group members collaberately in git and github e.g. model improvement, hyperparameter tuning, unit testing etc.
+
+We have used ChatGPT and Gemini to help debug our code and also understand how cloud setup should be.
