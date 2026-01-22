@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -32,6 +33,48 @@ def _select_device(preference: str) -> torch.device:
     return torch.device("cpu")
 
 
+def _normalize_gcs_prefix(prefix: str) -> str:
+    return prefix[5:] if prefix.startswith("gs://") else prefix
+
+
+def _maybe_download_processed_data(data_dir: Path, metadata_path: Path) -> None:
+    if metadata_path.exists():
+        return
+
+    gcs_prefix = os.environ.get("PLANTS_DATA_GCS")
+    if not gcs_prefix:
+        return
+
+    try:
+        from gcsfs import GCSFileSystem
+    except ImportError as exc:  # pragma: no cover - only needed in cloud jobs
+        raise RuntimeError("gcsfs is required to download data from GCS.") from exc
+
+    fs = GCSFileSystem()
+    remote_base = _normalize_gcs_prefix(gcs_prefix.rstrip("/"))
+    if fs.exists(f"{remote_base}/metadata.json"):
+        remote_prefix = remote_base
+    else:
+        remote_prefix = f"{remote_base}/processed"
+
+    local_processed = data_dir / "processed"
+    local_processed.mkdir(parents=True, exist_ok=True)
+
+    for remote_path in fs.ls(remote_prefix):
+        if remote_path.endswith("/"):
+            continue
+        filename = Path(remote_path).name
+        if not (filename.endswith(".pt") or filename.endswith(".json")):
+            continue
+        fs.get(remote_path, str(local_processed / filename))
+
+    if not metadata_path.exists():
+        raise FileNotFoundError(
+            f"Missing metadata at {metadata_path}. Set PLANTS_DATA_GCS to a GCS path "
+            "containing processed tensors and metadata.json."
+        )
+
+
 def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested directly
     from src.plants.data import MyDataset
     from src.plants.model import Model
@@ -46,6 +89,8 @@ def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested dire
     model_dir = Path(to_absolute_path(hparams.model_dir))
     model_dir.mkdir(parents=True, exist_ok=True)
 
+    _maybe_download_processed_data(Path(data_dir), Path(metadata_path))
+
     wandb_config = OmegaConf.to_container(cfg, resolve=True)
     run = None
     if hparams.wandb.enabled:
@@ -56,6 +101,15 @@ def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested dire
             job_type="train",
         )
         wandb.define_metric("*", step_metric="global_step")
+        sweep_lr = run.config.get("lr")
+        sweep_batch = run.config.get("batch_size")
+        sweep_dropout = run.config.get("dropout")
+        if sweep_lr is not None:
+            hparams.lr = float(sweep_lr)
+        if sweep_batch is not None:
+            hparams.batch_size = int(sweep_batch)
+        if sweep_dropout is not None:
+            cfg.model.dropout = float(sweep_dropout)
 
     target = hparams.target
     dataset = MyDataset(data_dir, target=target)
@@ -75,6 +129,10 @@ def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested dire
     else:
         raise ValueError(f"Unsupported target '{target}'. Expected one of ['class', 'disease', 'plant'] for training.")
     hparams.num_classes = num_classes
+    mean_val = metadata.get("mean")
+    std_val = metadata.get("std")
+    mean_tensor = torch.tensor(float(mean_val)) if mean_val is not None else None
+    std_tensor = torch.tensor(float(std_val)) if std_val is not None else None
 
     train_set, _ = dataset.load_plantvillage(target=target)
     data_channels = int(train_set.tensors[0].shape[1])
@@ -107,6 +165,7 @@ def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested dire
     )
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=hparams.lr)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
     statistics = {"train_loss": [], "train_accuracy": []}
     preds: list[torch.Tensor] = []
     targets: list[torch.Tensor] = []
@@ -144,13 +203,13 @@ def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested dire
                 print(f"Epoch {epoch}, iter {i}, loss: {loss.item()}, accuracy: {accuracy}")
 
                 if run is not None:
-                    images = [
-                        wandb.Image(
-                            (single_img.detach().cpu().clamp(0, 1) * 255).to(torch.uint8),
-                            caption=f"Input {idx}",
-                        )
-                        for idx, single_img in enumerate(img[:5])
-                    ]
+                    images = []
+                    for idx, single_img in enumerate(img[:5]):
+                        image_cpu = single_img.detach().cpu()
+                        if mean_tensor is not None and std_tensor is not None:
+                            image_cpu = image_cpu * std_tensor + mean_tensor
+                        image_cpu = image_cpu.clamp(0, 1)
+                        images.append(wandb.Image((image_cpu * 255).to(torch.uint8), caption=f"Input {idx}"))
                     wandb.log({"input_images": images, "global_step": global_step})
 
                     grads = torch.cat([p.grad.flatten() for p in model.parameters() if p.grad is not None], 0)
@@ -175,6 +234,7 @@ def _train_model(cfg: DictConfig) -> None:  # Renamed and now can be tested dire
                     "global_step": global_step,
                 },
             )
+            scheduler.step()
     print("Training complete")
 
     # Concatenate stored predictions/targets

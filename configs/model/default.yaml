@@ -5,6 +5,6 @@ conv1_kernel: 3
 conv1_stride: 1
 conv2_out: 64
 conv2_kernel: 3
-conv2_stride: 3
+conv2_stride: 2
 conv2_padding: 1
 dropout: 0.2

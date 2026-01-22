@@ -1,0 +1,48 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build container image'
+  args: [
+    'build',
+    '.',
+    '-t',
+    'europe-west1-docker.pkg.dev/$PROJECT_ID/mlops-plants/train',
+    '-f',
+    './dockerfiles/train.dockerfile'
+  ]
+
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push container image'
+  args: [
+    'push',
+    'europe-west1-docker.pkg.dev/$PROJECT_ID/mlops-plants/train'
+  ]
+
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: 'Submit Vertex AI training job'
+  entrypoint: 'bash'
+  secretEnv: ['WANDB_API_KEY']
+  args:
+  - -c
+  - |
+      cat > /workspace/vertex_job.yaml <<EOF
+      workerPoolSpecs:
+      - machineSpec:
+          machineType: n1-highmem-4
+        replicaCount: 1
+        containerSpec:
+          imageUri: europe-west1-docker.pkg.dev/$PROJECT_ID/mlops-plants/train
+          env:
+          - name: WANDB_API_KEY
+            value: "$$WANDB_API_KEY"
+          - name: PLANTS_DATA_GCS
+            value: "gs://mlops-plants/data/processed"
+      EOF
+      gcloud ai custom-jobs create --region=europe-west1 --display-name=plant-disease-training --config=/workspace/vertex_job.yaml
+
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/wandb_api_key/versions/latest
+    env: WANDB_API_KEY
+
+options:
+  logging: CLOUD_LOGGING_ONLY

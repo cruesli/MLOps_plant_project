@@ -17,7 +17,7 @@ def test_model_initialization():
         conv2_padding=1,
         dropout=0.5,
     )
-    assert model.fc1.out_features == 10, "The number of output classes should be 10"
+    assert model.fc.out_features == 10, "The number of output classes should be 10"
 
 
 def test_model_forward_pass():

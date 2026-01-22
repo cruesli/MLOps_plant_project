@@ -2,14 +2,14 @@
 
 MLOps project on plant image classification
 
-## Overall Goal of the Project: 
+## Overall Goal of the Project:
 
-The primary objective of this project is to develop a robust MLOps pipeline for automated plant disease detection using the PlantVillage dataset. As MLOps engineers at a start-up, our priority is not the absolute performance of the model, but the speed and reliability of the pipeline itself. 
+The primary objective of this project is to develop a robust MLOps pipeline for automated plant disease detection using the PlantVillage dataset. As MLOps engineers at a start-up, our priority is not the absolute performance of the model, but the speed and reliability of the pipeline itself.
 We aim to create a system where experiments are fully reproducible through structured configuration and experiment tracking. To achieve this, we will implement a baseline model and moving toward a tuned version. A part of our operational goal is to containerize our application using Docker to ensure that our training and environments are consistent across different machines, which is essential for a MLOps workflow.
 
 
 
-## Data: Source and Initial Scope: 
+## Data: Source and Initial Scope:
 
 **Dataset:** The PlantVillage dataset is not included in this repository. See [`Dataset.md`](Dataset.md) for download and setup instructions.
 
@@ -17,7 +17,7 @@ We will utilize the PlantVillage dataset from Kaggle, which contains thousands o
 
 
 
-## Models and Frameworks: 
+## Models and Frameworks:
 
 We will use PyTorch as our primary machine learning framework. To streamline development and optimize our code, we plan to use the following:
 
