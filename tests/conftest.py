@@ -1,6 +1,8 @@
 import json
+
 import pytest
 import torch
+
 
 @pytest.fixture
 def dummy_processed_data(tmp_path):

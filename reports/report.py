@@ -167,7 +167,9 @@ def check() -> None:
         raise ValueError(msg)
 
     counter = 0
-    for index, (answer, (_, constraints)) in enumerate(zip(answers, question_constraints.items()), 1):
+    for index, (answer, (_, constraints)) in enumerate(
+        zip(answers, question_constraints.items(), strict=False), 1
+    ):
         counter += int(constraints(answer, index))
     logger.info(f"Total number of questions passed: {counter}/{len(answers)}")
 

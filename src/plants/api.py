@@ -88,9 +88,7 @@ def _class_metadata(metadata: dict, target: str) -> tuple[int, list[str]]:
     elif target == "plant":
         mapping = metadata["plant_to_idx"]
     else:
-        raise ValueError(
-            f"Unsupported target '{target}'. Expected one of ['class', 'disease', 'plant'] for inference."
-        )
+        raise ValueError(f"Unsupported target '{target}'. Expected one of ['class', 'disease', 'plant'] for inference.")
 
     class_names = [name for name, _ in sorted(mapping.items(), key=lambda item: item[1])]
     return len(mapping), class_names
@@ -276,7 +274,14 @@ def index() -> str:
         cursor: pointer;
       }
       button:hover { filter: brightness(0.95); }
-      .pill { display: inline-flex; padding: 6px 10px; border-radius: 999px; background: var(--pill); color: var(--muted); font-size: 12px; }
+      .pill {
+        display: inline-flex;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--pill);
+        color: var(--muted);
+        font-size: 12px;
+      }
       .img {
         width: 100%;
         border-radius: 12px;
@@ -381,7 +386,7 @@ def index() -> str:
 
 
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)) -> JSONResponse:
+async def predict(file: UploadFile = File(...)) -> JSONResponse:  # noqa: B008
     if context is None:
         return JSONResponse({"error": "Model not loaded"}, status_code=500)
 
@@ -397,7 +402,7 @@ async def predict(file: UploadFile = File(...)) -> JSONResponse:
     values, indices = torch.topk(probs, topk)
     results = [
         {"label": _format_label(context.class_names[idx]), "probability": float(val)}
-        for val, idx in zip(values.tolist(), indices.tolist())
+        for val, idx in zip(values.tolist(), indices.tolist(), strict=False)
     ]
 
     return JSONResponse({"top_predictions": results})
@@ -423,7 +428,7 @@ def predict_random() -> JSONResponse:
     values, indices = torch.topk(probs, topk)
     results = [
         {"label": _format_label(context.class_names[idx]), "probability": float(val)}
-        for val, idx in zip(values.tolist(), indices.tolist())
+        for val, idx in zip(values.tolist(), indices.tolist(), strict=False)
     ]
 
     payload = {

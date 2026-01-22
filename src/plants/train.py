@@ -68,10 +68,9 @@ def _maybe_download_processed_data(data_dir: Path, metadata_path: Path) -> None:
 
     fs = GCSFileSystem()
     remote_base = _normalize_gcs_prefix(gcs_prefix.rstrip("/"))
-    if fs.exists(f"{remote_base}/metadata.json"):
-        remote_prefix = remote_base
-    else:
-        remote_prefix = f"{remote_base}/processed"
+    remote_prefix = (
+        remote_base if fs.exists(f"{remote_base}/metadata.json") else f"{remote_base}/processed"
+    )
 
     local_processed = data_dir / "processed"
     local_processed.mkdir(parents=True, exist_ok=True)
