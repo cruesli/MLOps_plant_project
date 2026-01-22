@@ -610,7 +610,7 @@ Regarding the experience, working in the cloud is difficult to start with. It is
 
 > **Did you implement anything extra in your project that is not covered by other questions? Maybe you implemented**
 > **a frontend for your API, use extra version control features, a drift detection service, a kubernetes cluster etc.**
-> **If yes, explain what you did and why.**
+> **If yes, explain what you did and why.** 
 >
 > Recommended answer length: 0-200 words.
 >
