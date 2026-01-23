@@ -9,7 +9,7 @@ from io import BytesIO
 from pathlib import Path
 
 import torch
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig
@@ -383,29 +383,6 @@ def index() -> str:
   </body>
 </html>
 """
-
-
-@app.post("/predict")
-async def predict(file: UploadFile = File(...)) -> JSONResponse:  # noqa: B008
-    if context is None:
-        return JSONResponse({"error": "Model not loaded"}, status_code=500)
-
-    image_bytes = await file.read()
-    image = Image.open(BytesIO(image_bytes)).convert("RGB")
-    tensor = context.transform(image).unsqueeze(0).to(context.device)
-
-    with torch.inference_mode():
-        logits = context.model(tensor)
-        probs = torch.softmax(logits, dim=1)[0]
-
-    topk = min(5, probs.shape[0])
-    values, indices = torch.topk(probs, topk)
-    results = [
-        {"label": _format_label(context.class_names[idx]), "probability": float(val)}
-        for val, idx in zip(values.tolist(), indices.tolist(), strict=False)
-    ]
-
-    return JSONResponse({"top_predictions": results})
 
 
 @app.post("/predict-random")
