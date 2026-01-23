@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 import multiprocessing as mp
 import platform
+import shutil
+import subprocess
+import zipfile
 from collections.abc import Iterable
 from contextlib import suppress
 from dataclasses import dataclass
@@ -20,6 +23,7 @@ except ImportError:  # pragma: no cover - tqdm is optional at runtime
     tqdm = None
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+PLANTVILLAGE_KAGGLE_DATASET = "mohitsingh1804/plantvillage"
 
 
 @dataclass
@@ -223,8 +227,7 @@ class MyDataset(Dataset):
     def preprocess(self, *, show_progress: bool = True) -> None:
         """Process PlantVillage images into train/val tensors."""
         if not self.raw_dir.exists():
-            msg = f"Raw data directory not found: {self.raw_dir}. Run ./scripts/get_data.sh first."
-            raise FileNotFoundError(msg)
+            _download_plantvillage(self.data_root)
 
         self.processed_dir.mkdir(parents=True, exist_ok=True)
 
@@ -343,6 +346,39 @@ def preprocess(data_path: Path = Path("data"), show_progress: bool = True) -> No
     print("Preprocessing PlantVillage data...")
     dataset = MyDataset(data_path)
     dataset.preprocess(show_progress=show_progress)
+
+
+def _download_plantvillage(data_root: Path) -> None:
+    """Download and extract PlantVillage data into data/raw using Kaggle CLI via uv."""
+    raw_dir = data_root / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = raw_dir / "plantvillage.zip"
+
+    if zip_path.exists():
+        return
+
+    uv_path = shutil.which("uv")
+    if uv_path is None:
+        raise FileNotFoundError("uv not found on PATH. Install uv or download data manually.")
+
+    kaggle_cmd = [
+        uv_path,
+        "run",
+        "kaggle",
+        "datasets",
+        "download",
+        "-d",
+        PLANTVILLAGE_KAGGLE_DATASET,
+        "-p",
+        str(raw_dir),
+    ]
+    subprocess.run(kaggle_cmd, check=True)
+
+    if not zip_path.exists():
+        raise FileNotFoundError(f"Expected download at {zip_path}, but it was not found.")
+
+    with zipfile.ZipFile(zip_path) as zf:
+        zf.extractall(raw_dir)
 
 
 def main():

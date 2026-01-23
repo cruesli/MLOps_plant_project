@@ -36,12 +36,63 @@ jobs:
           uv run coverage run -m pytest tests/
           uv run coverage report -m
 
+  api-tests:
+    name: API Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: |
+          uv sync --dev --locked
+
+      - name: Run API tests
+        run: |
+          uv run pytest tests/apitests/test_api_unit.py
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    if: ${{ secrets.MYENDPOINT != '' }}
+    env:
+      MYENDPOINT: ${{ secrets.MYENDPOINT }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: |
+          uv sync --dev --locked
+
+      - name: Run integration tests
+        run: |
+          uv run pytest tests/integrationtests/test_api_live.py
+
   check-success:
     name: Unit Tests  # This matches exactly what the protection rule wants
-    needs: [test]     # Replace 'test' with the ID of your matrix job
+    needs: [test, api-tests, integration-tests]     # Replace 'test' with the ID of your matrix job
     runs-on: ubuntu-latest
     if: always()      # Ensures this runs even if others fail to report correctly
     steps:
       - name: Check matrix results
-        if: contains(needs.test.result, 'failure') || contains(needs.test.result, 'cancelled')
+        if: |
+          contains(needs.test.result, 'failure') ||
+          contains(needs.test.result, 'cancelled') ||
+          contains(needs.api-tests.result, 'failure') ||
+          contains(needs.api-tests.result, 'cancelled') ||
+          contains(needs.integration-tests.result, 'failure') ||
+          contains(needs.integration-tests.result, 'cancelled')
         run: exit 1
