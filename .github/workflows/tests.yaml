@@ -60,31 +60,23 @@ jobs:
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
-    env:
-      MYENDPOINT: ${{ secrets.MYENDPOINT }}
     steps:
-      - name: Skip if no endpoint
-        if: ${{ secrets.MYENDPOINT == '' }}
-        run: echo "MYENDPOINT secret not set; skipping integration tests."
-
       - name: Checkout code
-        if: ${{ secrets.MYENDPOINT != '' }}
         uses: actions/checkout@v5
 
       - name: Set up uv
-        if: ${{ secrets.MYENDPOINT != '' }}
         uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.13"
           enable-cache: true
 
       - name: Install dependencies
-        if: ${{ secrets.MYENDPOINT != '' }}
         run: |
           uv sync --dev --locked
 
       - name: Run integration tests
-        if: ${{ secrets.MYENDPOINT != '' }}
+        env:
+          MYENDPOINT: ${{ secrets.MYENDPOINT }}
         run: |
           uv run pytest tests/integrationtests/test_api_live.py
 
