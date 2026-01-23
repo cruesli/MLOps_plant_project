@@ -35,12 +35,12 @@ will check the repositories and the code to verify your answers.</p>
 <li>[x] Make sure that all team members have write access to the GitHub repository (M5)</li>
 <li>[x] Create a dedicated environment for you project to keep track of your packages (M2)</li>
 <li>[x] Create the initial file structure using cookiecutter with an appropriate template (M6)</li>
-<li>[ ] Fill out the <code>data.py</code> file such that it downloads whatever data you need and preprocesses it (if necessary) (M6)</li>
+<li>[x] Fill out the <code>data.py</code> file such that it downloads whatever data you need and preprocesses it (if necessary) (M6)</li>
 <li>[x] Add a model to <code>model.py</code> and a training procedure to <code>train.py</code> and get that running (M6)</li>
 <li>[x] Remember to either fill out the <code>requirements.txt</code>/<code>requirements_dev.txt</code> files or keeping your
     <code>pyproject.toml</code>/<code>uv.lock</code> up-to-date with whatever dependencies that you are using (M2+M6)</li>
-<li>[ ] Remember to comply with good coding practices (<code>pep8</code>) while doing the project (M7)</li>
-<li>[ ] Do a bit of code typing and remember to document essential parts of your code (M7)</li>
+<li>[x] Remember to comply with good coding practices (<code>pep8</code>) while doing the project (M7)</li>
+<li>[x] Do a bit of code typing and remember to document essential parts of your code (M7)</li>
 <li>[x] Setup version control for your data or part of your data (M8)</li>
 <li>[x] Add command line interfaces and project commands to your code where it makes sense (M9)</li>
 <li>[x] Construct one or multiple docker files for your code (M10)</li>
@@ -69,8 +69,8 @@ will check the repositories and the code to verify your answers.</p>
 <li>[x] Get your model training in GCP using either the Engine or Vertex AI (M21)</li>
 <li>[x] Create a FastAPI application that can do inference using your model (M22)</li>
 <li>[x] Deploy your model in GCP using either Functions or Run as the backend (M23)</li>
-<li>[ ] Write API tests for your application and setup continues integration for these (M24)</li>
-<li>[ ] Load test your application (M24)</li>
+<li>[x] Write API tests for your application and setup continues integration for these (M24)</li>
+<li>[x] Load test your application (M24)</li>
 <li>[ ] Create a more specialized ML-deployment API using either ONNX or BentoML, or both (M25)</li>
 <li>[x] Create a frontend for your API (M26)</li>
 </ul>
@@ -90,8 +90,8 @@ will check the repositories and the code to verify your answers.</p>
 <ul>
 <li>[ ] Write some documentation for your application (M32)</li>
 <li>[ ] Publish the documentation to GitHub Pages (M32)</li>
-<li>[ ] Revisit your initial project description. Did the project turn out as you wanted?</li>
-<li>[ ] Create an architectural diagram over your MLOps pipeline</li>
+<li>[x] Revisit your initial project description. Did the project turn out as you wanted?</li>
+<li>[x] Create an architectural diagram over your MLOps pipeline</li>
 <li>[x] Make sure all group members have an understanding about all parts of the project</li>
 <li>[x] Uploaded all your code to GitHub</li>
 </ul>
@@ -188,7 +188,7 @@ corporate and increase the quality of your code.</p>
 <em>application but also ... .</em></p>
 <p>Answer:</p>
 </blockquote>
-<p>There are 12 test functions across 6 test files. They cover: MyDataset creation, indexing, saved tensor shapes/metadata, valid/invalid targets, and missing/corrupt files; end-to-end evaluate() on fixture data with a dummy checkpoint; model init and forward output shape; slow get_data.sh download/extract to non-empty data/raw; _train_model reproducibility (two runs yield identical weights); and end-to-end visualize() that produces an embeddings figure.</p>
+<p>There are 19 test functions across 8 test files. They cover: MyDataset creation, indexing, saved tensor shapes/metadata, valid/invalid targets, and missing/corrupt files; end-to-end evaluate() on fixture data with a dummy checkpoint; model init and forward output shape; get_data.sh download/extract to non-empty data/raw (skipped if Kaggle credentials are missing); _train_model reproducibility (two runs yield identical weights); end-to-end visualize() that produces an embeddings figure; unit-style API tests for the FastAPI endpoints; and live integration tests against the deployed API.</p>
 <h3>Question 8</h3>
 <blockquote>
 <p><strong>What is the total code coverage (in percentage) of your code? If your code had a code coverage of 100% (or close</strong>
@@ -364,7 +364,7 @@ To reproduce a specific experiment, it is sufficient to rerun \texttt{train.py} 
 <strong>your project. You can take inspiration from <a href="figures/build.png">this figure</a>.</strong></p>
 <p>Answer:</p>
 </blockquote>
-<p><img alt="my_image" src="figures/Build_history.png" /></p>
+<p><img alt="my_image" src="figures/buildhistory.png" /></p>
 <h3>Question 22</h3>
 <blockquote>
 <p><strong>Did you manage to train your model in the cloud using either the Engine or Vertex AI? If yes, explain how you did</strong>
@@ -389,10 +389,10 @@ To reproduce a specific experiment, it is sufficient to rerun \texttt{train.py} 
 </blockquote>
 <p>Yes, we did manage to write an API for our model. We used FastAPI to create a robust and efficient web service.</p>
 <p>The API is defined in src/plants/api.py. At startup, it loads the best-performing model and its associated metadata directly from Google Cloud Storage (GCS), with paths configured via environment variables. This decouples the model from the application code, making updates easy.</p>
-<p>We implemented several endpoints:</p>
+<p>We implemented three endpoints:</p>
 <ul>
-<li>/predict: This endpoint accepts an image upload, preprocesses it, and returns the top predictions and their probabilities as a JSON response.</li>
 <li>/predict-random: A special endpoint for demonstration purposes. It randomly selects a pre-loaded sample image and returns its prediction, which can be viewed through the integrated HTML frontend.</li>
+<li>/demo/{filename}: Serves the demo image bytes for the frontend to display the sampled image.</li>
 <li>/refresh: Another special feature which allows us to trigger a hot-reload of the model from GCS without restarting the API service.</li>
 </ul>
 <p>The API is containerized using the dockerfiles/api.dockerfile, which uses uvicorn to serve the application, making it easy to deploy and scale.</p>
@@ -425,7 +425,7 @@ To reproduce a specific experiment, it is sufficient to rerun \texttt{train.py} 
 <em>before the service crashed.</em></p>
 <p>Answer:</p>
 </blockquote>
-<p>For unit testing we did verification of the HTML index, random prediction payload (using demo images), and demo image serving. We did not do load testing, but to do this we would have used locust and created a locustfile that defined some users. Then we would run the file and define the number of users (i.e 10) and how fast the number of users should ramp up (i.e. 1/s) and then start the load testing. From this we could have seen how many users/requests per second the api can handle, as well as different percentiles for response times. This would give us a good indication of how snappy the api would feel for users.</p>
+<p>We implemented unit-style API tests with FastAPI TestClient to validate the HTML index, <code>/predict-random</code> payload, demo image serving, and refresh logic. We also added live integration tests that hit the deployed Cloud Run service via <code>MYENDPOINT</code> to confirm the real API responds correctly. For load testing we used Locust with a <code>locustfile.py</code> targeting <code>GET /</code> and <code>POST /predict-random</code>. We ran a headless test against the Cloud Run endpoint on January 23, 2026. Results: 77,593 total requests, 0% failures, sustained throughput ~258.5 req/s (aggregated), average latency ~6.27 s, p50 ~7.5 s, p95 ~13.0 s, p99 ~13.0 s, and max latency ~13.6 s. This provides a realistic baseline for responsiveness and capacity under steady load.</p>
 <h3>Question 26</h3>
 <blockquote>
 <p><strong>Did you manage to implement monitoring of your deployed model? If yes, explain how it works. If not, explain how</strong>
@@ -468,7 +468,7 @@ To reproduce a specific experiment, it is sufficient to rerun \texttt{train.py} 
 <blockquote>
 <p><strong>Did you implement anything extra in your project that is not covered by other questions? Maybe you implemented</strong>
 <strong>a frontend for your API, use extra version control features, a drift detection service, a kubernetes cluster etc.</strong>
-<strong>If yes, explain what you did and why.</strong></p>
+<strong>If yes, explain what you did and why.</strong> </p>
 <p>Recommended answer length: 0-200 words.</p>
 <p>Example:
 <em>We implemented a frontend for our API. We did this because we wanted to show the user ... . The frontend was</em>
@@ -488,7 +488,8 @@ To reproduce a specific experiment, it is sufficient to rerun \texttt{train.py} 
 <em>Whenever we commit code and push to GitHub, it auto triggers ... and ... . From there the diagram shows ...</em></p>
 <p>Answer:</p>
 </blockquote>
-<p>The diagram starts on the local machine. Here we define experiments with Hydra configuration files in configs/, which specify model, dataloader, and hyperparameters, and we preprocess data with data.py to create metadata.json and tensors. Those processed artifacts are then uploaded to GCS (for example gs://mlops-plants/data/processed) so cloud jobs can read them in a reproducible way. When we commit and push code to GitHub, GitHub Actions runs the automated checks (tests, linting) to validate the code.</p>
+<p><img alt="my_image" src="figures/architecture.png" /></p>
+<p>The diagram is a high-level view and starts on the local machine. Here we define experiments with Hydra configuration files in configs/, which specify model, dataloader, and hyperparameters, and we preprocess data with data.py to create metadata.json and tensors. Those processed artifacts are then uploaded to GCS (for example gs://mlops-plants/data/processed) so cloud jobs can read them in a reproducible way; the diagram abstracts this as DVC/data access. When we commit and push code to GitHub, GitHub Actions runs the automated checks (tests, linting) to validate the code.</p>
 <p>For cloud training, Cloud Build is triggered using cloudbuild.yaml (or cloudbuild.sweep.yaml for sweeps). It builds the training Docker image (train.dockerfile), pushes it to Artifact Registry, and launches a Vertex AI custom training job. The training container downloads processed data from GCS, trains the model, logs metrics and configs to Weights &amp; Biases, and uploads checkpoints to GCS under gs://…/models/<run_id>/model.pth. For hyperparameter tuning, W&amp;B sweeps run multiple agents on Vertex AI and produce several runs in parallel. After the sweep, promote_best.py reads W&amp;B to identify the best run and copies that model to gs://…/models/best/model.pth, also writing metrics.json.</p>
 <p>For inference, Cloud Build uses cloudbuild.api.yaml to build the API image (api.dockerfile), push it to Artifact Registry, and deploy to Cloud Run. On startup, the FastAPI service (api.py) pulls the best model, metrics, and demo images from GCS. End users access the Cloud Run URL, click the inference button, and receive predictions plus the best‑run metrics.</p>
 <h3>Question 30</h3>
