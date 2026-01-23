@@ -12,7 +12,6 @@ Key components:
 - DVC-tracked data artifacts (`data.dvc`) with GCS storage via `dvc-gs`.
 - W&B logging for training runs.
 - FastAPI inference service in `src/plants/api.py`.
-- A legacy FastAPI control panel in `main.py` (not used by the deployed container).
 - Cloud Build configs for training/sweeps and API deployment in `cloudbuild/`.
 
 ## Data
@@ -77,9 +76,9 @@ Cloud Build configuration files live in `cloudbuild/`:
 - `cloudbuild/cloudbuild.sweep.yaml` runs a sweep workflow.
 - `cloudbuild/cloudbuild.api.yaml` builds and deploys the API container to Cloud Run.
 
-Deployed app (Cloud Run):
+Cloud Run service URL:
 ```txt
-https://plant-api-ulv62zswja-ew.a.run.app/
+gcloud run services describe plant-api --region europe-west1 --format='value(status.url)'
 ```
 
 Dockerfiles are stored in `dockerfiles/`:
@@ -136,6 +135,7 @@ Dockerfiles are stored in `dockerfiles/`:
 │       ├── train.py
 │       └── visualize.py
 ├── tests/                    # Tests
+│   ├── apitests/
 │   ├── integrationtests/
 │   ├── performancetests/
 │   ├── conftest.py
